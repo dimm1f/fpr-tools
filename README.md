@@ -1,2 +1,2 @@
-# fpr-mcp
+# fpr-tools
 
