@@ -1,0 +1,20 @@
+{
+	"name": "Rust",
+	"image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
+	"features": {
+		"ghcr.io/devcontainers-extra/features/claude-code:2": {}
+	},
+
+	"customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer",
+                "vadimcn.vscode-lldb",
+                "usernamehw.errorlens",
+                "tamasfe.even-better-toml",
+                "mutantdino.resourcemonitor"
+            ]
+        }
+    }
+
+}
