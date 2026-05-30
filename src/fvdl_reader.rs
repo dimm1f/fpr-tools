@@ -1,0 +1,1210 @@
+#![allow(dead_code)]
+use serde::{Deserialize, Deserializer};
+
+#[derive(Debug, Deserialize)]
+pub struct TimeStamp {
+    #[serde(rename = "@date")]
+    pub date: Option<String>,
+    #[serde(rename = "@time")]
+    pub time: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SourceLocation {
+    #[serde(rename = "@path")]
+    pub path: Option<String>,
+    #[serde(rename = "@line")]
+    pub line: Option<i32>,
+    #[serde(rename = "@lineEnd")]
+    pub line_end: Option<i32>,
+    #[serde(rename = "@colStart")]
+    pub col_start: Option<i32>,
+    #[serde(rename = "@colEnd")]
+    pub col_end: Option<i32>,
+    #[serde(rename = "@contextId")]
+    pub context_id: Option<i32>,
+    #[serde(rename = "@snippet")]
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Action {
+    #[serde(rename = "@type")]
+    pub typ: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Group {
+    #[serde(rename = "@name")]
+    pub name: String,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Loc {
+    #[serde(rename = "@type")]
+    pub typ: Option<String>,
+    #[serde(rename = "$text")]
+    pub count: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct File {
+    #[serde(rename = "@id")]
+    pub id: Option<i32>,
+    #[serde(rename = "@size")]
+    pub size: Option<String>,
+    #[serde(rename = "@timestamp")]
+    pub timestamp: Option<String>,
+    #[serde(rename = "@loc")]
+    pub loc: Option<i32>,
+    #[serde(rename = "@type")]
+    pub typ: Option<String>,
+    #[serde(rename = "@encoding")]
+    pub encoding: Option<String>,
+    #[serde(rename = "Name")]
+    pub name: Option<String>,
+    #[serde(rename = "LOC", default)]
+    pub loc_list: Vec<Loc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Build {
+    #[serde(rename = "BuildID")]
+    pub id: Option<String>,
+    #[serde(rename = "Project")]
+    pub project_name: Option<String>,
+    #[serde(rename = "Version")]
+    pub version: Option<String>,
+    #[serde(rename = "Label")]
+    pub label: Option<String>,
+    #[serde(rename = "BuildDuration")]
+    pub build_duration: Option<u32>,
+    #[serde(rename = "NumberFiles")]
+    pub number_files: Option<u32>,
+    #[serde(rename = "LOC", default)]
+    pub loc_list: Vec<Loc>,
+    #[serde(rename = "JavaClasspath")]
+    pub java_classpath: Option<String>,
+    #[serde(rename = "Libdirs")]
+    pub lib_dirs: Option<String>,
+    #[serde(rename = "SourceBasePath")]
+    pub base_path: Option<String>,
+    #[serde(
+        rename = "SourceFiles",
+        default,
+        deserialize_with = "unwrap_source_files"
+    )]
+    pub source_files: Vec<File>,
+    #[serde(rename = "ScanTime", default, deserialize_with = "unwrap_scan_time")]
+    pub scan_time: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClassInfo {
+    #[serde(rename = "@refid")]
+    pub refid: Option<i32>,
+    #[serde(rename = "ClassID")]
+    pub rule_id: String,
+    #[serde(rename = "Kingdom")]
+    pub kind: Option<String>,
+    #[serde(rename = "Type")]
+    pub typ: Option<String>,
+    #[serde(rename = "Subtype")]
+    pub subtyp: Option<String>,
+    #[serde(rename = "AnalyzerName")]
+    pub analyzer_name: Option<String>,
+    #[serde(rename = "DefaultSeverity")]
+    pub default_severity: Option<f32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Audit {
+    #[serde(rename = "auditor")]
+    pub auditor: Option<String>,
+    #[serde(rename = "time")]
+    pub time: Option<String>,
+    #[serde(rename = "auditSeverity")]
+    pub audit_severity: Option<f32>,
+    #[serde(rename = "status")]
+    pub status: Option<String>,
+    #[serde(rename = "auditAnalysis")]
+    pub analysis: Option<String>,
+    #[serde(rename = "comments")]
+    pub comments: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InstanceInfo {
+    #[serde(rename = "@minVirtualCallConfidence")]
+    pub min_virtual_call_confidence: Option<f32>,
+    #[serde(rename = "InstanceID")]
+    pub instance_id: String,
+    #[serde(rename = "InstanceSeverity")]
+    pub instance_severity: Option<f32>,
+    #[serde(rename = "Confidence")]
+    pub confidence: Option<f32>,
+    #[serde(rename = "InstanceDescription")]
+    pub instance_description: Option<String>,
+    #[serde(rename = "MetaInfo", default, deserialize_with = "unwrap_meta_info")]
+    pub meta_info: Vec<Group>,
+    #[serde(rename = "Audits", default, deserialize_with = "unwrap_audits")]
+    pub audits: Vec<Audit>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Def {
+    #[serde(rename = "@key")]
+    pub key: String,
+    #[serde(rename = "@value")]
+    pub value: String,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LocationDef {
+    #[serde(rename = "@key")]
+    pub key: String,
+    #[serde(rename = "@path")]
+    pub path: Option<String>,
+    #[serde(rename = "@line")]
+    pub line: Option<i32>,
+    #[serde(rename = "@lineEnd")]
+    pub line_end: Option<i32>,
+    #[serde(rename = "@colStart")]
+    pub col_start: Option<i32>,
+    #[serde(rename = "@colEnd")]
+    pub col_end: Option<i32>,
+    #[serde(rename = "@contextId")]
+    pub context_id: Option<i32>,
+    #[serde(rename = "@snippet")]
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReplacementDefinitions {
+    #[serde(rename = "Def", default)]
+    pub defs: Vec<Def>,
+    #[serde(rename = "LocationDef", default)]
+    pub location_defs: Vec<LocationDef>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Fact {
+    #[serde(rename = "@primary")]
+    pub primary: Option<String>,
+    #[serde(rename = "@type")]
+    pub typ: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Reason {
+    #[serde(rename = "Rule", deserialize_with = "unwrap_rule_id", default)]
+    pub rule_id: Option<String>,
+    #[serde(
+        rename = "InductionRef",
+        deserialize_with = "unwrap_induction_ref_id",
+        default
+    )]
+    pub induction_ref_id: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnifiedPrimaryNode {
+    #[serde(rename = "@isDefault")]
+    pub is_default: Option<bool>,
+    #[serde(rename = "@detailsOnly")]
+    pub details_only: Option<bool>,
+    #[serde(rename = "@label")]
+    pub label: Option<String>,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+    #[serde(rename = "SecondaryLocation")]
+    pub secondary_location: Option<SourceLocation>,
+    #[serde(rename = "Action")]
+    pub action: Option<Action>,
+    #[serde(rename = "Reason")]
+    pub reason: Option<Reason>,
+    #[serde(rename = "Knowledge", default, deserialize_with = "unwrap_knowledge")]
+    pub facts: Vec<Fact>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnifiedTracePrimaryEntry {
+    #[serde(rename = "Node")]
+    pub node: Option<UnifiedPrimaryNode>,
+    #[serde(rename = "NodeRef", default, deserialize_with = "unwrap_node_ref_id")]
+    pub node_ref_id: Option<i32>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnifiedTrace {
+    #[serde(rename = "@id")]
+    pub id: Option<i32>,
+    #[serde(rename = "Primary", deserialize_with = "unwrap_trace_primary")]
+    pub primary: Vec<UnifiedTracePrimaryEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Unified {
+    #[serde(rename = "Context")]
+    pub context: ContextEntry,
+    #[serde(rename = "ReplacementDefinitions")]
+    pub replacement_definitions: Option<ReplacementDefinitions>,
+    #[serde(rename = "Trace", default)]
+    pub traces: Vec<UnifiedTrace>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SourceRef {
+    #[serde(rename = "@path")]
+    pub path: Option<String>,
+    #[serde(rename = "@line")]
+    pub line: Option<i32>,
+    #[serde(rename = "@lineEnd")]
+    pub line_end: Option<i32>,
+    #[serde(rename = "@colStart")]
+    pub col_start: Option<i32>,
+    #[serde(rename = "@colEnd")]
+    pub col_end: Option<i32>,
+    #[serde(rename = "@contextId")]
+    pub context_id: Option<i32>,
+    #[serde(rename = "@snippet")]
+    pub snippet: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Arg {
+    #[serde(rename = "@relevance")]
+    pub relevance: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Local {
+    #[serde(rename = "SourceRef")]
+    pub source_ref: Option<SourceRef>,
+    #[serde(rename = "Context", default, deserialize_with = "unwrap_context_id")]
+    pub context_id: Option<i32>,
+    #[serde(rename = "Arg", default)]
+    pub args: Vec<Arg>,
+    #[serde(rename = "ExternalID", default)]
+    pub external_ids: Vec<ExternalId>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Structural {
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+    #[serde(rename = "Context", default, deserialize_with = "unwrap_context_id")]
+    pub context_id: Option<i32>,
+    #[serde(
+        rename = "StructuralMatch",
+        default,
+        deserialize_with = "unwrap_structural_matches"
+    )]
+    pub structural_matches: Vec<SourceLocation>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Runtime {
+    #[serde(rename = "Context", default, deserialize_with = "unwrap_context_id")]
+    pub context_id: Option<i32>,
+    #[serde(rename = "PrimaryLocation")]
+    pub primary_location: Option<SourceLocation>,
+    #[serde(rename = "ReplacementDefinitions")]
+    pub replacement_definitions: Option<ReplacementDefinitions>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AnalysisInfo {
+    #[serde(rename = "Unified")]
+    pub unified: Option<Unified>,
+    #[serde(rename = "Dataflow", default, deserialize_with = "unwrap_dataflow_id")]
+    pub dataflow_id: Option<String>,
+    #[serde(rename = "Local")]
+    pub local: Option<Local>,
+    #[serde(
+        rename = "Stateful",
+        default,
+        deserialize_with = "unwrap_stateful_primary"
+    )]
+    pub stateful_primary: Option<i32>,
+    #[serde(rename = "Structural")]
+    pub structural: Option<Structural>,
+    #[serde(
+        rename = "Configuration",
+        default,
+        deserialize_with = "unwrap_configuration"
+    )]
+    pub configuration: Vec<SourceLocation>,
+    #[serde(rename = "Runtime")]
+    pub runtime: Option<Runtime>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExternalEntry {
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    #[serde(rename = "@type")]
+    pub typ: Option<String>,
+    #[serde(rename = "URL")]
+    pub url: Option<String>,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AuxiliaryData {
+    #[serde(rename = "@contentType")]
+    pub content_type: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ExternalId {
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Vulnerability {
+    #[serde(rename = "ClassInfo")]
+    pub rule: ClassInfo,
+    #[serde(rename = "InstanceInfo")]
+    pub instance: InstanceInfo,
+    #[serde(rename = "AnalysisInfo")]
+    pub analysis: AnalysisInfo,
+    #[serde(
+        rename = "ExternalEntries",
+        default,
+        deserialize_with = "unwrap_external_entries"
+    )]
+    pub external_entries: Vec<ExternalEntry>,
+    #[serde(rename = "AuxiliaryData", default)]
+    pub auxiliary_data: Vec<AuxiliaryData>,
+    #[serde(rename = "ExternalID", default)]
+    pub external_ids: Vec<ExternalId>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ContextFunction {
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    #[serde(rename = "@namespace")]
+    pub namespace: Option<String>,
+    #[serde(rename = "@enclosingClass")]
+    pub enclosing_class: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ClassIdentSymbol {
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    #[serde(rename = "@namespace")]
+    pub namespace: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ContextEntry {
+    #[serde(rename = "@id")]
+    pub id: Option<i32>,
+    #[serde(rename = "Function")]
+    pub function: Option<ContextFunction>,
+    #[serde(rename = "ClassIdent")]
+    pub class_ident: Option<ClassIdentSymbol>,
+    #[serde(rename = "FunctionDeclarationSourceLocation")]
+    pub function_decl_source_location: Option<SourceLocation>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnifiedPoolNode {
+    #[serde(rename = "@id")]
+    pub id: Option<i32>,
+    #[serde(rename = "@detailsOnly")]
+    pub details_only: Option<bool>,
+    #[serde(rename = "@label")]
+    pub label: Option<String>,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+    #[serde(rename = "SecondaryLocation")]
+    pub secondary_location: Option<SourceLocation>,
+    #[serde(rename = "Action")]
+    pub action: Option<Action>,
+    #[serde(rename = "Reason")]
+    pub reason: Option<Reason>,
+    #[serde(rename = "Knowledge", default, deserialize_with = "unwrap_knowledge")]
+    pub facts: Vec<Fact>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnifiedInduction {
+    #[serde(rename = "@id")]
+    pub id: i32,
+    #[serde(rename = "Text")]
+    pub text: String,
+    #[serde(rename = "TraceRef", deserialize_with = "unwrap_trace_ref_id")]
+    pub trace_ref_id: i32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Reference {
+    #[serde(rename = "Title")]
+    pub title: Option<String>,
+    #[serde(rename = "Publisher")]
+    pub publisher: Option<String>,
+    #[serde(rename = "Author")]
+    pub author: Option<String>,
+    #[serde(rename = "Source")]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CustomDescription {
+    #[serde(rename = "@ruleID")]
+    pub rule_id: Option<String>,
+    #[serde(rename = "@header")]
+    pub header: Option<String>,
+    #[serde(rename = "@contentType")]
+    pub content_type: Option<String>,
+    #[serde(rename = "Abstract")]
+    pub _abstract: Option<String>,
+    #[serde(rename = "Explanation")]
+    pub explanation: Option<String>,
+    #[serde(rename = "Recommendations")]
+    pub recommendations: Option<String>,
+    #[serde(rename = "Tips", default, deserialize_with = "unwrap_tips")]
+    pub tips: Vec<String>,
+    #[serde(rename = "References", default, deserialize_with = "unwrap_references")]
+    pub references: Vec<Reference>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Description {
+    #[serde(rename = "@classID")]
+    pub class_id: Option<String>,
+    #[serde(rename = "@contentType")]
+    pub content_type: Option<String>,
+    #[serde(rename = "Abstract")]
+    pub _abstract: Option<String>,
+    #[serde(rename = "Explanation")]
+    pub explanation: Option<String>,
+    #[serde(rename = "Recommendations")]
+    pub recommendations: Option<String>,
+    #[serde(rename = "Details")]
+    pub details: Option<String>,
+    #[serde(rename = "Tips", default, deserialize_with = "unwrap_tips")]
+    pub tips: Vec<String>,
+    #[serde(rename = "References", default, deserialize_with = "unwrap_references")]
+    pub references: Vec<Reference>,
+    #[serde(rename = "CustomDescription", default)]
+    pub custom_descriptions: Vec<CustomDescription>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Snippet {
+    /// Format: `"sha1digest#file:start:end"`
+    #[serde(rename = "@id")]
+    pub id: String,
+    #[serde(rename = "File")]
+    pub file: String,
+    #[serde(rename = "StartLine")]
+    pub start_line: i32,
+    #[serde(rename = "EndLine")]
+    pub end_line: i32,
+    #[serde(rename = "Text")]
+    pub text: String,
+}
+
+// --- ProgramData ---
+
+#[derive(Debug, Deserialize)]
+pub struct ProgramFunction {
+    #[serde(rename = "@name")]
+    pub name: Option<String>,
+    #[serde(rename = "@namespace")]
+    pub namespace: Option<String>,
+    #[serde(rename = "@enclosingClass")]
+    pub enclosing_class: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FunctionCall {
+    #[serde(rename = "@callType")]
+    pub call_type: Option<String>,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+    #[serde(rename = "Function")]
+    pub function: Option<ProgramFunction>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SourceInstance {
+    #[serde(rename = "@ruleID")]
+    pub rule_id: Option<String>,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+    #[serde(rename = "FunctionCall")]
+    pub function_call: Option<FunctionCall>,
+    #[serde(rename = "FunctionEntry")]
+    pub function_entry: Option<FunctionCall>,
+    #[serde(
+        rename = "TaintFlags",
+        default,
+        deserialize_with = "unwrap_taint_flags"
+    )]
+    pub taint_flags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SinkInstance {
+    #[serde(rename = "@ruleID")]
+    pub rule_id: Option<String>,
+    #[serde(rename = "SourceLocation")]
+    pub source_location: Option<SourceLocation>,
+    #[serde(rename = "FunctionCall")]
+    pub function_call: Option<FunctionCall>,
+    #[serde(rename = "FunctionEntry")]
+    pub function_entry: Option<FunctionCall>,
+    #[serde(
+        rename = "TaintFlags",
+        default,
+        deserialize_with = "unwrap_taint_flags"
+    )]
+    pub taint_flags: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProgramData {
+    #[serde(rename = "Sources", deserialize_with = "unwrap_sources")]
+    pub sources: Vec<SourceInstance>,
+    #[serde(rename = "Sinks", deserialize_with = "unwrap_sinks")]
+    pub sinks: Vec<SinkInstance>,
+    #[serde(
+        rename = "CalledWithNoDef",
+        deserialize_with = "unwrap_called_with_no_def"
+    )]
+    pub called_with_no_def: Vec<ProgramFunction>,
+    #[serde(
+        rename = "CalledWithTaint",
+        default,
+        deserialize_with = "unwrap_called_with_taint"
+    )]
+    pub called_with_taint: Vec<FunctionCall>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RulePack {
+    #[serde(rename = "RulePackID")]
+    pub rule_pack_id: Option<String>,
+    #[serde(rename = "SKU")]
+    pub sku: Option<String>,
+    #[serde(rename = "Name")]
+    pub name: Option<String>,
+    #[serde(rename = "Version")]
+    pub version: Option<String>,
+    #[serde(rename = "MAC")]
+    pub mac: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RuleFile {
+    #[serde(rename = "@version")]
+    pub version: Option<String>,
+    #[serde(rename = "@MAC")]
+    pub mac: Option<String>,
+    #[serde(rename = "$text")]
+    pub path: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RulePackList {
+    #[serde(rename = "RulePack", default)]
+    pub rule_packs: Vec<RulePack>,
+    #[serde(rename = "RuleFile", default)]
+    pub rule_files: Vec<RuleFile>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NameValuePair {
+    #[serde(rename = "name")]
+    pub name: Option<String>,
+    #[serde(rename = "value")]
+    pub value: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PropertyList {
+    #[serde(rename = "@type")]
+    pub typ: Option<String>,
+    #[serde(rename = "Property", default)]
+    pub properties: Vec<NameValuePair>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Err {
+    #[serde(rename = "@code")]
+    pub code: Option<String>,
+    #[serde(rename = "$text")]
+    pub content: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MachineInfo {
+    #[serde(rename = "Hostname")]
+    pub hostname: Option<String>,
+    #[serde(rename = "Username")]
+    pub username: Option<String>,
+    #[serde(rename = "Platform")]
+    pub platform: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FilterResult {
+    #[serde(rename = "Instance", default)]
+    pub instances: Vec<String>,
+    #[serde(rename = "Rule", default)]
+    pub rules: Vec<String>,
+    #[serde(rename = "Category", default)]
+    pub categories: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EngineRuleEntry {
+    #[serde(rename = "@id")]
+    pub id: Option<String>,
+    #[serde(rename = "MetaInfo", default, deserialize_with = "unwrap_meta_info")]
+    pub meta_info: Vec<Group>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Capability {
+    #[serde(rename = "Name")]
+    pub name: Option<String>,
+    #[serde(rename = "Expiration")]
+    pub expiration: Option<String>,
+    #[serde(rename = "Attribute", default)]
+    pub attributes: Vec<NameValuePair>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LicenseInfo {
+    #[serde(rename = "Metadata", default)]
+    pub metadata: Vec<NameValuePair>,
+    #[serde(rename = "Capability", default)]
+    pub capabilities: Vec<Capability>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InactiveGrouping {
+    #[serde(rename = "@category")]
+    pub category: Option<String>,
+    #[serde(rename = "@count")]
+    pub count: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EngineData {
+    #[serde(rename = "EngineVersion")]
+    pub engine_version: Option<String>,
+    #[serde(
+        rename = "InactiveResults",
+        default,
+        deserialize_with = "unwrap_inactive_results"
+    )]
+    pub inactive_results: Vec<InactiveGrouping>,
+    #[serde(rename = "RulePacks")]
+    pub rule_packs: Option<RulePackList>,
+    #[serde(rename = "ExpiredRulePacks")]
+    pub expired_rule_packs: Option<RulePackList>,
+    #[serde(rename = "UnlicensedRulePacks")]
+    pub unlicensed_rule_packs: Option<RulePackList>,
+    #[serde(rename = "Properties", default)]
+    pub properties: Vec<PropertyList>,
+    #[serde(
+        rename = "CommandLine",
+        default,
+        deserialize_with = "unwrap_command_line"
+    )]
+    pub command_line: Vec<String>,
+    #[serde(rename = "Errors", default, deserialize_with = "unwrap_err_msg")]
+    pub errors: Vec<Err>,
+    #[serde(rename = "MachineInfo")]
+    pub machine_info: Option<MachineInfo>,
+    #[serde(rename = "FilterResult")]
+    pub filter_result: Option<FilterResult>,
+    #[serde(rename = "RuleInfo", default, deserialize_with = "unwrap_rule_info")]
+    pub rule_info: Vec<EngineRuleEntry>,
+    #[serde(rename = "LicenseInfo")]
+    pub license_info: Option<LicenseInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Fvdl {
+    #[serde(rename = "@version")]
+    pub version: String,
+    #[serde(rename = "CreatedTS")]
+    pub created_ts: Option<TimeStamp>,
+    #[serde(rename = "WriteDate")]
+    pub write_date: Option<TimeStamp>,
+    #[serde(rename = "ModifiedDate", default)]
+    pub modified_dates: Vec<TimeStamp>,
+    #[serde(rename = "UUID")]
+    pub uuid: String,
+    #[serde(rename = "Build")]
+    pub build: Option<Build>,
+    #[serde(rename = "Vulnerabilities", deserialize_with = "unwrap_vulns")]
+    pub vulnerabilities: Vec<Vulnerability>,
+    #[serde(
+        rename = "ContextPool",
+        default,
+        deserialize_with = "unwrap_context_pool"
+    )]
+    pub context_pool: Vec<ContextEntry>,
+    #[serde(
+        rename = "UnifiedNodePool",
+        default,
+        deserialize_with = "unwrap_unified_node_pool"
+    )]
+    pub unified_node_pool: Vec<UnifiedPoolNode>,
+    #[serde(
+        rename = "UnifiedTracePool",
+        default,
+        deserialize_with = "unwrap_unified_trace_pool"
+    )]
+    pub unified_trace_pool: Vec<UnifiedTrace>,
+    #[serde(
+        rename = "UnifiedInductionPool",
+        default,
+        deserialize_with = "unwrap_unified_induction_pool"
+    )]
+    pub unified_induction_pool: Vec<UnifiedInduction>,
+    #[serde(rename = "Description", default)]
+    pub descriptions: Vec<Description>,
+    #[serde(rename = "Snippets", default, deserialize_with = "unwrap_snippets")]
+    pub snippets: Vec<Snippet>,
+    #[serde(rename = "ProgramData")]
+    pub program_data: Option<ProgramData>,
+    #[serde(rename = "EngineData")]
+    pub engine_data: Option<EngineData>,
+}
+
+fn unwrap_vulns<'de, D>(deserializer: D) -> Result<Vec<Vulnerability>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Vulnerability", default)]
+        items: Vec<Vulnerability>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_external_entries<'de, D>(deserializer: D) -> Result<Vec<ExternalEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Entry", default)]
+        items: Vec<ExternalEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_knowledge<'de, D>(deserializer: D) -> Result<Vec<Fact>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Fact", default)]
+        items: Vec<Fact>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_rule_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@ruleID")]
+        rule_id: Option<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.rule_id)
+}
+
+fn unwrap_induction_ref_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: Option<i32>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_source_files<'de, D>(deserializer: D) -> Result<Vec<File>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "File", default)]
+        items: Vec<File>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_scan_time<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@value")]
+        value: Option<i64>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.value)
+}
+
+fn unwrap_meta_info<'de, D>(deserializer: D) -> Result<Vec<Group>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Group", default)]
+        items: Vec<Group>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_audits<'de, D>(deserializer: D) -> Result<Vec<Audit>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Audit", default)]
+        items: Vec<Audit>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_node_ref_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: i32,
+    }
+    Ok(Some(Wrapper::deserialize(deserializer)?.id))
+}
+
+fn unwrap_trace_primary<'de, D>(deserializer: D) -> Result<Vec<UnifiedTracePrimaryEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Entry", default)]
+        items: Vec<UnifiedTracePrimaryEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_trace_ref_id<'de, D>(deserializer: D) -> Result<i32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: i32,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_context_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: Option<i32>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_dataflow_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: Option<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_stateful_primary<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@primary")]
+        primary: Option<i32>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.primary)
+}
+
+fn unwrap_context_pool<'de, D>(deserializer: D) -> Result<Vec<ContextEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Context", default)]
+        items: Vec<ContextEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_unified_node_pool<'de, D>(deserializer: D) -> Result<Vec<UnifiedPoolNode>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Node", default)]
+        items: Vec<UnifiedPoolNode>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_unified_trace_pool<'de, D>(deserializer: D) -> Result<Vec<UnifiedTrace>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Trace", default)]
+        items: Vec<UnifiedTrace>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_unified_induction_pool<'de, D>(deserializer: D) -> Result<Vec<UnifiedInduction>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Induction", default)]
+        items: Vec<UnifiedInduction>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_tips<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Tip", default)]
+        items: Vec<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_references<'de, D>(deserializer: D) -> Result<Vec<Reference>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Reference", default)]
+        items: Vec<Reference>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_snippets<'de, D>(deserializer: D) -> Result<Vec<Snippet>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Snippet", default)]
+        items: Vec<Snippet>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_taint_flags<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct TF {
+        #[serde(rename = "@name")]
+        name: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "TaintFlag", default)]
+        items: Vec<TF>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?
+        .items
+        .into_iter()
+        .filter_map(|tf| tf.name)
+        .collect())
+}
+
+fn unwrap_structural_matches<'de, D>(deserializer: D) -> Result<Vec<SourceLocation>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Entry {
+        #[serde(rename = "SourceLocation")]
+        loc: Option<SourceLocation>,
+    }
+    Ok(Vec::<Entry>::deserialize(deserializer)?
+        .into_iter()
+        .filter_map(|e| e.loc)
+        .collect())
+}
+
+fn unwrap_configuration<'de, D>(deserializer: D) -> Result<Vec<SourceLocation>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "SourceLocation", default)]
+        items: Vec<SourceLocation>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_sources<'de, D>(deserializer: D) -> Result<Vec<SourceInstance>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "SourceInstance", default)]
+        items: Vec<SourceInstance>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_sinks<'de, D>(deserializer: D) -> Result<Vec<SinkInstance>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "SinkInstance", default)]
+        items: Vec<SinkInstance>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_called_with_no_def<'de, D>(deserializer: D) -> Result<Vec<ProgramFunction>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Function", default)]
+        items: Vec<ProgramFunction>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_called_with_taint<'de, D>(deserializer: D) -> Result<Vec<FunctionCall>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "FunctionCall", default)]
+        items: Vec<FunctionCall>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_err_msg<'de, D>(deserializer: D) -> Result<Vec<Err>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Error", default)]
+        items: Vec<Err>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_command_line<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Argument", default)]
+        items: Vec<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_rule_info<'de, D>(deserializer: D) -> Result<Vec<EngineRuleEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Rule", default)]
+        items: Vec<EngineRuleEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_inactive_results<'de, D>(deserializer: D) -> Result<Vec<InactiveGrouping>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Grouping", default)]
+        items: Vec<InactiveGrouping>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}

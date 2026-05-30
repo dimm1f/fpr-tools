@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+anyhow = "1.0.102"
 clap = "4.6.1"
-quick-xml = "0.40.1"
+quick-xml = { version = "0.40.1", features = ["serialize"] }
+serde = { version = "1.0.228", features = ["derive"] }
 zip = "8.6.0"
