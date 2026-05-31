@@ -1,5 +1,8 @@
 #![allow(dead_code)]
+use std::io::Read;
+
 use serde::{Deserialize, Deserializer};
+use zip::read::ZipFile;
 
 #[derive(Debug, Deserialize)]
 pub struct TimeStamp {
@@ -751,8 +754,9 @@ pub struct EngineData {
     pub license_info: Option<LicenseInfo>,
 }
 
+/// Lightweight metadata parsed from the FVDL root — excludes all large collections.
 #[derive(Debug, Deserialize)]
-pub struct Fvdl {
+pub struct FvdlMeta {
     #[serde(rename = "@version")]
     pub version: String,
     #[serde(rename = "CreatedTS")]
@@ -765,40 +769,117 @@ pub struct Fvdl {
     pub uuid: String,
     #[serde(rename = "Build")]
     pub build: Option<Build>,
-    #[serde(rename = "Vulnerabilities", deserialize_with = "unwrap_vulns")]
-    pub vulnerabilities: Vec<Vulnerability>,
-    #[serde(
-        rename = "ContextPool",
-        default,
-        deserialize_with = "unwrap_context_pool"
-    )]
-    pub context_pool: Vec<ContextEntry>,
-    #[serde(
-        rename = "UnifiedNodePool",
-        default,
-        deserialize_with = "unwrap_unified_node_pool"
-    )]
-    pub unified_node_pool: Vec<UnifiedPoolNode>,
-    #[serde(
-        rename = "UnifiedTracePool",
-        default,
-        deserialize_with = "unwrap_unified_trace_pool"
-    )]
-    pub unified_trace_pool: Vec<UnifiedTrace>,
-    #[serde(
-        rename = "UnifiedInductionPool",
-        default,
-        deserialize_with = "unwrap_unified_induction_pool"
-    )]
-    pub unified_induction_pool: Vec<UnifiedInduction>,
-    #[serde(rename = "Description", default)]
-    pub descriptions: Vec<Description>,
-    #[serde(rename = "Snippets", default, deserialize_with = "unwrap_snippets")]
-    pub snippets: Vec<Snippet>,
-    #[serde(rename = "ProgramData")]
-    pub program_data: Option<ProgramData>,
-    #[serde(rename = "EngineData")]
-    pub engine_data: Option<EngineData>,
+}
+
+/// Holds the raw decompressed FVDL bytes and exposes each section as an on-demand parse.
+///
+/// ## Design tradeoffs
+///
+/// Each accessor method re-scans the full XML from scratch. Unknown elements are tokenised
+/// but not allocated, so a single-section call is fast, but calling N methods still does N
+/// passes over the same bytes. This is acceptable when only one or two sections are needed
+/// per request (the common MCP query pattern) and the data is already in memory.
+///
+/// If the workload requires accessing most sections — or re-scanning cost becomes measurable
+/// under profiling — consider replacing this with an index-based approach:
+/// one upfront scan with [`quick_xml::Reader`] records the byte range of every top-level
+/// element, then each accessor slices directly into `data` and deserialises only that window.
+/// That trades a small amount of upfront work for O(1) per-section access afterward.
+pub struct Fvdl {
+    data: Vec<u8>,
+}
+
+impl Fvdl {
+    pub fn from_zip_entry<'a, R: Read>(mut entry: ZipFile<'a, R>) -> anyhow::Result<Self> {
+        let mut data = Vec::with_capacity(entry.size() as usize);
+        entry.read_to_end(&mut data)?;
+        Ok(Self { data })
+    }
+
+    pub fn meta(&self) -> anyhow::Result<FvdlMeta> {
+        Ok(quick_xml::de::from_reader(self.data.as_slice())?)
+    }
+
+    pub fn vulnerabilities(&self) -> anyhow::Result<Vec<Vulnerability>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "Vulnerabilities", deserialize_with = "unwrap_vulns", default)]
+            items: Vec<Vulnerability>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn context_pool(&self) -> anyhow::Result<Vec<ContextEntry>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "ContextPool", deserialize_with = "unwrap_context_pool", default)]
+            items: Vec<ContextEntry>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn unified_node_pool(&self) -> anyhow::Result<Vec<UnifiedPoolNode>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "UnifiedNodePool", deserialize_with = "unwrap_unified_node_pool", default)]
+            items: Vec<UnifiedPoolNode>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn unified_trace_pool(&self) -> anyhow::Result<Vec<UnifiedTrace>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "UnifiedTracePool", deserialize_with = "unwrap_unified_trace_pool", default)]
+            items: Vec<UnifiedTrace>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn unified_induction_pool(&self) -> anyhow::Result<Vec<UnifiedInduction>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "UnifiedInductionPool", deserialize_with = "unwrap_unified_induction_pool", default)]
+            items: Vec<UnifiedInduction>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn descriptions(&self) -> anyhow::Result<Vec<Description>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "Description", default)]
+            items: Vec<Description>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn snippets(&self) -> anyhow::Result<Vec<Snippet>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "Snippets", deserialize_with = "unwrap_snippets", default)]
+            items: Vec<Snippet>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+    }
+
+    pub fn program_data(&self) -> anyhow::Result<Option<ProgramData>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "ProgramData")]
+            item: Option<ProgramData>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.item)
+    }
+
+    pub fn engine_data(&self) -> anyhow::Result<Option<EngineData>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "EngineData")]
+            item: Option<EngineData>,
+        }
+        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.item)
+    }
 }
 
 fn unwrap_vulns<'de, D>(deserializer: D) -> Result<Vec<Vulnerability>, D::Error>
@@ -1208,3 +1289,4 @@ where
     }
     Ok(Wrapper::deserialize(deserializer)?.items)
 }
+
