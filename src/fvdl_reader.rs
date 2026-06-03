@@ -4,6 +4,344 @@ use std::io::Read;
 use serde::{Deserialize, Deserializer};
 use zip::read::ZipFile;
 
+use crate::section_index::SectionIndex;
+
+fn unwrap_external_entries<'de, D>(deserializer: D) -> Result<Vec<ExternalEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Entry", default)]
+        items: Vec<ExternalEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_knowledge<'de, D>(deserializer: D) -> Result<Vec<Fact>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Fact", default)]
+        items: Vec<Fact>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_rule_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@ruleID")]
+        rule_id: Option<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.rule_id)
+}
+
+fn unwrap_induction_ref_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: Option<i32>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_source_files<'de, D>(deserializer: D) -> Result<Vec<File>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "File", default)]
+        items: Vec<File>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_scan_time<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@value")]
+        value: Option<i64>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.value)
+}
+
+fn unwrap_meta_info<'de, D>(deserializer: D) -> Result<Vec<Group>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Group", default)]
+        items: Vec<Group>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_audits<'de, D>(deserializer: D) -> Result<Vec<Audit>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Audit", default)]
+        items: Vec<Audit>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_node_ref_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: i32,
+    }
+    Ok(Some(Wrapper::deserialize(deserializer)?.id))
+}
+
+fn unwrap_trace_primary<'de, D>(deserializer: D) -> Result<Vec<UnifiedTracePrimaryEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Entry", default)]
+        items: Vec<UnifiedTracePrimaryEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_trace_ref_id<'de, D>(deserializer: D) -> Result<i32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: i32,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_context_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: Option<i32>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_dataflow_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@id")]
+        id: Option<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.id)
+}
+
+fn unwrap_stateful_primary<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "@primary")]
+        primary: Option<i32>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.primary)
+}
+
+fn unwrap_tips<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Tip", default)]
+        items: Vec<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_references<'de, D>(deserializer: D) -> Result<Vec<Reference>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Reference", default)]
+        items: Vec<Reference>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_taint_flags<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct TF {
+        #[serde(rename = "@name")]
+        name: Option<String>,
+    }
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "TaintFlag", default)]
+        items: Vec<TF>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?
+        .items
+        .into_iter()
+        .filter_map(|tf| tf.name)
+        .collect())
+}
+
+fn unwrap_structural_matches<'de, D>(deserializer: D) -> Result<Vec<SourceLocation>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Entry {
+        #[serde(rename = "SourceLocation")]
+        loc: Option<SourceLocation>,
+    }
+    Ok(Vec::<Entry>::deserialize(deserializer)?
+        .into_iter()
+        .filter_map(|e| e.loc)
+        .collect())
+}
+
+fn unwrap_configuration<'de, D>(deserializer: D) -> Result<Vec<SourceLocation>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "SourceLocation", default)]
+        items: Vec<SourceLocation>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_sources<'de, D>(deserializer: D) -> Result<Vec<SourceInstance>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "SourceInstance", default)]
+        items: Vec<SourceInstance>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_sinks<'de, D>(deserializer: D) -> Result<Vec<SinkInstance>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "SinkInstance", default)]
+        items: Vec<SinkInstance>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_called_with_no_def<'de, D>(deserializer: D) -> Result<Vec<ProgramFunction>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Function", default)]
+        items: Vec<ProgramFunction>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_called_with_taint<'de, D>(deserializer: D) -> Result<Vec<FunctionCall>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "FunctionCall", default)]
+        items: Vec<FunctionCall>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_err_msg<'de, D>(deserializer: D) -> Result<Vec<Err>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Error", default)]
+        items: Vec<Err>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_command_line<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Argument", default)]
+        items: Vec<String>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_rule_info<'de, D>(deserializer: D) -> Result<Vec<EngineRuleEntry>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Rule", default)]
+        items: Vec<EngineRuleEntry>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
+fn unwrap_inactive_results<'de, D>(deserializer: D) -> Result<Vec<InactiveGrouping>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct Wrapper {
+        #[serde(rename = "Grouping", default)]
+        items: Vec<InactiveGrouping>,
+    }
+    Ok(Wrapper::deserialize(deserializer)?.items)
+}
+
 #[derive(Debug, Deserialize)]
 pub struct TimeStamp {
     #[serde(rename = "@date")]
@@ -771,31 +1109,25 @@ pub struct FvdlMeta {
     pub build: Option<Build>,
 }
 
-/// Holds the raw decompressed FVDL bytes and exposes each section as an on-demand parse.
-///
-/// ## Design tradeoffs
-///
-/// Each accessor method re-scans the full XML from scratch. Unknown elements are tokenised
-/// but not allocated, so a single-section call is fast, but calling N methods still does N
-/// passes over the same bytes. This is acceptable when only one or two sections are needed
-/// per request (the common MCP query pattern) and the data is already in memory.
-///
-/// If the workload requires accessing most sections — or re-scanning cost becomes measurable
-/// under profiling — consider replacing this with an index-based approach:
-/// one upfront scan with [`quick_xml::Reader`] records the byte range of every top-level
-/// element, then each accessor slices directly into `data` and deserialises only that window.
-/// That trades a small amount of upfront work for O(1) per-section access afterward.
+/// Holds the raw decompressed FVDL bytes alongside a byte-range index of every
+/// top-level element, built in a single `quick_xml` event scan at construction time.
+/// Each accessor slices directly into `data` and deserialises only that window.
 pub struct Fvdl {
     data: Vec<u8>,
+    index: SectionIndex,
 }
 
 impl Fvdl {
     pub fn from_zip_entry<'a, R: Read>(mut entry: ZipFile<'a, R>) -> anyhow::Result<Self> {
         let mut data = Vec::with_capacity(entry.size() as usize);
         entry.read_to_end(&mut data)?;
-        Ok(Self { data })
+        let index = SectionIndex::build(&data)?;
+        Ok(Self { data, index })
     }
 
+    /// Parses lightweight scan metadata from the FVDL root element and its early children.
+    /// This is the only accessor that re-reads from the beginning of `data` because
+    /// `FvdlMeta` requires the `@version` attribute on the root `<FVDL>` element.
     pub fn meta(&self) -> anyhow::Result<FvdlMeta> {
         Ok(quick_xml::de::from_reader(self.data.as_slice())?)
     }
@@ -803,490 +1135,100 @@ impl Fvdl {
     pub fn vulnerabilities(&self) -> anyhow::Result<Vec<Vulnerability>> {
         #[derive(Deserialize)]
         struct W {
-            #[serde(rename = "Vulnerabilities", deserialize_with = "unwrap_vulns", default)]
+            #[serde(rename = "Vulnerability", default)]
             items: Vec<Vulnerability>,
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        let Some((s, e)) = self.index.first("Vulnerabilities") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
     pub fn context_pool(&self) -> anyhow::Result<Vec<ContextEntry>> {
         #[derive(Deserialize)]
         struct W {
-            #[serde(rename = "ContextPool", deserialize_with = "unwrap_context_pool", default)]
+            #[serde(rename = "Context", default)]
             items: Vec<ContextEntry>,
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        let Some((s, e)) = self.index.first("ContextPool") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
     pub fn unified_node_pool(&self) -> anyhow::Result<Vec<UnifiedPoolNode>> {
         #[derive(Deserialize)]
         struct W {
-            #[serde(rename = "UnifiedNodePool", deserialize_with = "unwrap_unified_node_pool", default)]
+            #[serde(rename = "Node", default)]
             items: Vec<UnifiedPoolNode>,
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        let Some((s, e)) = self.index.first("UnifiedNodePool") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
     pub fn unified_trace_pool(&self) -> anyhow::Result<Vec<UnifiedTrace>> {
         #[derive(Deserialize)]
         struct W {
-            #[serde(rename = "UnifiedTracePool", deserialize_with = "unwrap_unified_trace_pool", default)]
+            #[serde(rename = "Trace", default)]
             items: Vec<UnifiedTrace>,
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        let Some((s, e)) = self.index.first("UnifiedTracePool") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
     pub fn unified_induction_pool(&self) -> anyhow::Result<Vec<UnifiedInduction>> {
         #[derive(Deserialize)]
         struct W {
-            #[serde(rename = "UnifiedInductionPool", deserialize_with = "unwrap_unified_induction_pool", default)]
+            #[serde(rename = "Induction", default)]
             items: Vec<UnifiedInduction>,
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        let Some((s, e)) = self.index.first("UnifiedInductionPool") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
+    // `Description` appears once per rule at the top level; each is deserialized individually.
     pub fn descriptions(&self) -> anyhow::Result<Vec<Description>> {
-        #[derive(Deserialize)]
-        struct W {
-            #[serde(rename = "Description", default)]
-            items: Vec<Description>,
+        let ranges = self.index.all("Description");
+        let mut result = Vec::with_capacity(ranges.len());
+        for &(s, e) in ranges {
+            result.push(quick_xml::de::from_reader::<_, Description>(&self.data[s..e])?);
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        Ok(result)
     }
 
     pub fn snippets(&self) -> anyhow::Result<Vec<Snippet>> {
         #[derive(Deserialize)]
         struct W {
-            #[serde(rename = "Snippets", deserialize_with = "unwrap_snippets", default)]
+            #[serde(rename = "Snippet", default)]
             items: Vec<Snippet>,
         }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.items)
+        let Some((s, e)) = self.index.first("Snippets") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
     pub fn program_data(&self) -> anyhow::Result<Option<ProgramData>> {
-        #[derive(Deserialize)]
-        struct W {
-            #[serde(rename = "ProgramData")]
-            item: Option<ProgramData>,
-        }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.item)
+        let Some((s, e)) = self.index.first("ProgramData") else {
+            return Ok(None);
+        };
+        Ok(Some(quick_xml::de::from_reader::<_, ProgramData>(
+            &self.data[s..e],
+        )?))
     }
 
     pub fn engine_data(&self) -> anyhow::Result<Option<EngineData>> {
-        #[derive(Deserialize)]
-        struct W {
-            #[serde(rename = "EngineData")]
-            item: Option<EngineData>,
-        }
-        Ok(quick_xml::de::from_reader::<_, W>(self.data.as_slice())?.item)
+        let Some((s, e)) = self.index.first("EngineData") else {
+            return Ok(None);
+        };
+        Ok(Some(quick_xml::de::from_reader::<_, EngineData>(
+            &self.data[s..e],
+        )?))
     }
 }
-
-fn unwrap_vulns<'de, D>(deserializer: D) -> Result<Vec<Vulnerability>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Vulnerability", default)]
-        items: Vec<Vulnerability>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_external_entries<'de, D>(deserializer: D) -> Result<Vec<ExternalEntry>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Entry", default)]
-        items: Vec<ExternalEntry>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_knowledge<'de, D>(deserializer: D) -> Result<Vec<Fact>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Fact", default)]
-        items: Vec<Fact>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_rule_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@ruleID")]
-        rule_id: Option<String>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.rule_id)
-}
-
-fn unwrap_induction_ref_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@id")]
-        id: Option<i32>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.id)
-}
-
-fn unwrap_source_files<'de, D>(deserializer: D) -> Result<Vec<File>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "File", default)]
-        items: Vec<File>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_scan_time<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@value")]
-        value: Option<i64>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.value)
-}
-
-fn unwrap_meta_info<'de, D>(deserializer: D) -> Result<Vec<Group>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Group", default)]
-        items: Vec<Group>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_audits<'de, D>(deserializer: D) -> Result<Vec<Audit>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Audit", default)]
-        items: Vec<Audit>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_node_ref_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@id")]
-        id: i32,
-    }
-    Ok(Some(Wrapper::deserialize(deserializer)?.id))
-}
-
-fn unwrap_trace_primary<'de, D>(deserializer: D) -> Result<Vec<UnifiedTracePrimaryEntry>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Entry", default)]
-        items: Vec<UnifiedTracePrimaryEntry>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_trace_ref_id<'de, D>(deserializer: D) -> Result<i32, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@id")]
-        id: i32,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.id)
-}
-
-fn unwrap_context_id<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@id")]
-        id: Option<i32>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.id)
-}
-
-fn unwrap_dataflow_id<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@id")]
-        id: Option<String>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.id)
-}
-
-fn unwrap_stateful_primary<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "@primary")]
-        primary: Option<i32>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.primary)
-}
-
-fn unwrap_context_pool<'de, D>(deserializer: D) -> Result<Vec<ContextEntry>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Context", default)]
-        items: Vec<ContextEntry>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_unified_node_pool<'de, D>(deserializer: D) -> Result<Vec<UnifiedPoolNode>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Node", default)]
-        items: Vec<UnifiedPoolNode>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_unified_trace_pool<'de, D>(deserializer: D) -> Result<Vec<UnifiedTrace>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Trace", default)]
-        items: Vec<UnifiedTrace>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_unified_induction_pool<'de, D>(deserializer: D) -> Result<Vec<UnifiedInduction>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Induction", default)]
-        items: Vec<UnifiedInduction>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_tips<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Tip", default)]
-        items: Vec<String>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_references<'de, D>(deserializer: D) -> Result<Vec<Reference>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Reference", default)]
-        items: Vec<Reference>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_snippets<'de, D>(deserializer: D) -> Result<Vec<Snippet>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Snippet", default)]
-        items: Vec<Snippet>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_taint_flags<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct TF {
-        #[serde(rename = "@name")]
-        name: Option<String>,
-    }
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "TaintFlag", default)]
-        items: Vec<TF>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?
-        .items
-        .into_iter()
-        .filter_map(|tf| tf.name)
-        .collect())
-}
-
-fn unwrap_structural_matches<'de, D>(deserializer: D) -> Result<Vec<SourceLocation>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Entry {
-        #[serde(rename = "SourceLocation")]
-        loc: Option<SourceLocation>,
-    }
-    Ok(Vec::<Entry>::deserialize(deserializer)?
-        .into_iter()
-        .filter_map(|e| e.loc)
-        .collect())
-}
-
-fn unwrap_configuration<'de, D>(deserializer: D) -> Result<Vec<SourceLocation>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "SourceLocation", default)]
-        items: Vec<SourceLocation>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_sources<'de, D>(deserializer: D) -> Result<Vec<SourceInstance>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "SourceInstance", default)]
-        items: Vec<SourceInstance>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_sinks<'de, D>(deserializer: D) -> Result<Vec<SinkInstance>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "SinkInstance", default)]
-        items: Vec<SinkInstance>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_called_with_no_def<'de, D>(deserializer: D) -> Result<Vec<ProgramFunction>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Function", default)]
-        items: Vec<ProgramFunction>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_called_with_taint<'de, D>(deserializer: D) -> Result<Vec<FunctionCall>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "FunctionCall", default)]
-        items: Vec<FunctionCall>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_err_msg<'de, D>(deserializer: D) -> Result<Vec<Err>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Error", default)]
-        items: Vec<Err>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_command_line<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Argument", default)]
-        items: Vec<String>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_rule_info<'de, D>(deserializer: D) -> Result<Vec<EngineRuleEntry>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Rule", default)]
-        items: Vec<EngineRuleEntry>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
-fn unwrap_inactive_results<'de, D>(deserializer: D) -> Result<Vec<InactiveGrouping>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    struct Wrapper {
-        #[serde(rename = "Grouping", default)]
-        items: Vec<InactiveGrouping>,
-    }
-    Ok(Wrapper::deserialize(deserializer)?.items)
-}
-
