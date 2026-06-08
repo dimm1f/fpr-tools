@@ -4,9 +4,13 @@ use std::{
     path::PathBuf,
 };
 
-use fpr_tools::{audit_reader::Audit, fvdl_reader::Fvdl};
-use zip::ZipArchive;
 use clap::{Parser, Subcommand};
+use fpr_tools::{
+    audit_reader::Audit,
+    fpr_report::{AuditIssue, FprReport, VulnerabilityStatus},
+    fvdl_reader::Fvdl,
+};
+use zip::ZipArchive;
 
 #[derive(Parser)]
 struct Args {
@@ -18,10 +22,11 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Show FPR statistics
     Info,
-    /// Show found issues
-    Issues,
+    Issues {
+        #[arg(long, default_value_t = false)]
+        show_tags: bool,
+    },
 }
 
 fn print_fpr_info(fpr: &mut ZipArchive<File>) -> anyhow::Result<()> {
@@ -94,7 +99,9 @@ fn print_fpr_info(fpr: &mut ZipArchive<File>) -> anyhow::Result<()> {
             }
         }
         if let Some(rps) = &engine.rule_packs {
-            let pack_names: Vec<String> = rps.rule_packs.iter()
+            let pack_names: Vec<String> = rps
+                .rule_packs
+                .iter()
                 .map(|rp| {
                     let name = rp.name.as_deref().unwrap_or("<unnamed>");
                     let ver = rp.version.as_deref().unwrap_or("?");
@@ -131,36 +138,98 @@ fn print_fpr_info(fpr: &mut ZipArchive<File>) -> anyhow::Result<()> {
         if let Some(wd) = &pi.write_date {
             println!("{:<ALIGN$}{}", "Audit written:", wd);
         }
+    }
 
-        let issues = &audit.issue_list.issues;
-        let suppressed = issues.iter().filter(|i| i.suppressed.unwrap_or(false)).count();
-        let hidden = issues.iter().filter(|i| i.hidden.unwrap_or(false)).count();
-        println!("{:<ALIGN$}{}", "Issues:", issues.len());
-        if suppressed > 0 {
-            println!("{:<ALIGN$}{}", "  Suppressed:", suppressed);
+    Ok(())
+}
+
+fn print_issues(fpr: &mut ZipArchive<File>, show_tags: bool) -> anyhow::Result<()> {
+    const ALIGN: usize = 16;
+
+    let report = FprReport::from_zip(fpr)?;
+    let entries = report.vulnerabilities()?;
+
+    let mut audited: usize = 0;
+    let mut unaudited: usize = 0;
+    let mut suppressed: usize = 0;
+    let mut removed: usize = 0;
+
+    let mut tag_counts: std::collections::BTreeMap<(&str, String, String), usize> =
+        std::collections::BTreeMap::new();
+
+    for entry in &entries {
+        let status_label = match &entry.status {
+            VulnerabilityStatus::Unaudited => {
+                unaudited += 1;
+                continue;
+            }
+            VulnerabilityStatus::Suppressed { .. } => {
+                suppressed += 1;
+                "Suppressed"
+            }
+            VulnerabilityStatus::Audited {
+                issue: AuditIssue::Removed(_),
+            } => {
+                removed += 1;
+                "Removed"
+            }
+            VulnerabilityStatus::Audited { .. } => {
+                audited += 1;
+                "Audited"
+            }
+        };
+
+        if show_tags
+            && let VulnerabilityStatus::Audited { issue }
+            | VulnerabilityStatus::Suppressed { issue } = &entry.status
+        {
+            for tag in issue.tags() {
+                if let Some(value) = &tag.value {
+                    let name = report.tag_names.resolve(&tag.id).to_owned();
+                    *tag_counts
+                        .entry((status_label, name, value.clone()))
+                        .or_default() += 1;
+                }
+            }
         }
-        if hidden > 0 {
-            println!("{:<ALIGN$}{}", "  Hidden:", hidden);
+    }
+
+    let counts = [
+        ("Audited", audited),
+        ("Unaudited", unaudited),
+        ("Suppressed", suppressed),
+        ("Removed", removed),
+    ];
+
+    if show_tags {
+        // +4 for the leading "    " on value lines, +1 for the space before the count.
+        // Using this single value for both the status label and the value column keeps
+        // all count numbers in the same column.
+        let val_align = tag_counts
+            .keys()
+            .map(|(_, _, v)| v.len() + 5)
+            .max()
+            .filter(|&x| x > ALIGN)
+            .unwrap_or(ALIGN);
+        let value_width = val_align.saturating_sub(5);
+
+        for (status_label, total) in counts {
+            println!("{:<val_align$}{}", status_label, total);
+            let mut current_tag: Option<&str> = None;
+            for ((_, tag_name, value), count) in tag_counts
+                .range((status_label, String::new(), String::new())..)
+                .take_while(|((s, _, _), _)| *s == status_label)
+            {
+                if current_tag != Some(tag_name.as_str()) {
+                    current_tag = Some(tag_name.as_str());
+                    println!("  {}", tag_name);
+                }
+                println!("    {:<value_width$} {}", value, count);
+            }
         }
-        let custom = &audit.issue_list.custom_issues;
-        let custom_suppressed = custom.iter().filter(|i| i.suppressed.unwrap_or(false)).count();
-        let custom_hidden = custom.iter().filter(|i| i.hidden.unwrap_or(false)).count();
-        println!("{:<ALIGN$}{}", "Custom issues:", custom.len());
-        if custom_suppressed > 0 {
-            println!("{:<ALIGN$}{}", "  Suppressed:", custom_suppressed);
-        }
-        if custom_hidden > 0 {
-            println!("{:<ALIGN$}{}", "  Hidden:", custom_hidden);
-        }
-        let removed = &audit.issue_list.removed_issues;
-        let removed_suppressed = removed.iter().filter(|i| i.suppressed.unwrap_or(false)).count();
-        let removed_hidden = removed.iter().filter(|i| i.hidden.unwrap_or(false)).count();
-        println!("{:<ALIGN$}{}", "Removed issues:", removed.len());
-        if removed_suppressed > 0 {
-            println!("{:<ALIGN$}{}", "  Suppressed:", removed_suppressed);
-        }
-        if removed_hidden > 0 {
-            println!("{:<ALIGN$}{}", "  Hidden:", removed_hidden);
+    } else {
+        for (status_label, total) in counts {
+            println!("{:<ALIGN$}{}", status_label, total);
         }
     }
 
@@ -176,6 +245,6 @@ fn main() -> anyhow::Result<()> {
 
     match args.command {
         Command::Info => print_fpr_info(&mut fpr),
-        Command::Issues => todo!(),
+        Command::Issues { show_tags } => print_issues(&mut fpr, show_tags),
     }
 }
