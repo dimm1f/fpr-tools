@@ -76,11 +76,23 @@ pub struct Issue {
     pub tags: Vec<Tag>,
     #[serde(rename = "AssignedUser")]
     pub assigned_user: Option<String>,
-    #[serde(rename = "ManagerAuditTrail", default, deserialize_with = "unwrap_tag_history")]
+    #[serde(
+        rename = "ManagerAuditTrail",
+        default,
+        deserialize_with = "unwrap_tag_history"
+    )]
     pub manager_audit_trail: Vec<TagHistory>,
-    #[serde(rename = "ClientAuditTrail", default, deserialize_with = "unwrap_tag_history")]
+    #[serde(
+        rename = "ClientAuditTrail",
+        default,
+        deserialize_with = "unwrap_tag_history"
+    )]
     pub client_audit_trail: Vec<TagHistory>,
-    #[serde(rename = "ThreadedComments", default, deserialize_with = "unwrap_comments")]
+    #[serde(
+        rename = "ThreadedComments",
+        default,
+        deserialize_with = "unwrap_comments"
+    )]
     pub threaded_comments: Vec<Comment>,
 }
 
@@ -100,11 +112,23 @@ pub struct CustomIssue {
     pub tags: Vec<Tag>,
     #[serde(rename = "AssignedUser")]
     pub assigned_user: Option<String>,
-    #[serde(rename = "ManagerAuditTrail", default, deserialize_with = "unwrap_tag_history")]
+    #[serde(
+        rename = "ManagerAuditTrail",
+        default,
+        deserialize_with = "unwrap_tag_history"
+    )]
     pub manager_audit_trail: Vec<TagHistory>,
-    #[serde(rename = "ClientAuditTrail", default, deserialize_with = "unwrap_tag_history")]
+    #[serde(
+        rename = "ClientAuditTrail",
+        default,
+        deserialize_with = "unwrap_tag_history"
+    )]
     pub client_audit_trail: Vec<TagHistory>,
-    #[serde(rename = "ThreadedComments", default, deserialize_with = "unwrap_comments")]
+    #[serde(
+        rename = "ThreadedComments",
+        default,
+        deserialize_with = "unwrap_comments"
+    )]
     pub threaded_comments: Vec<Comment>,
     #[serde(rename = "Category")]
     pub category: String,
@@ -134,11 +158,23 @@ pub struct RemovedIssue {
     pub tags: Vec<Tag>,
     #[serde(rename = "AssignedUser")]
     pub assigned_user: Option<String>,
-    #[serde(rename = "ManagerAuditTrail", default, deserialize_with = "unwrap_tag_history")]
+    #[serde(
+        rename = "ManagerAuditTrail",
+        default,
+        deserialize_with = "unwrap_tag_history"
+    )]
     pub manager_audit_trail: Vec<TagHistory>,
-    #[serde(rename = "ClientAuditTrail", default, deserialize_with = "unwrap_tag_history")]
+    #[serde(
+        rename = "ClientAuditTrail",
+        default,
+        deserialize_with = "unwrap_tag_history"
+    )]
     pub client_audit_trail: Vec<TagHistory>,
-    #[serde(rename = "ThreadedComments", default, deserialize_with = "unwrap_comments")]
+    #[serde(
+        rename = "ThreadedComments",
+        default,
+        deserialize_with = "unwrap_comments"
+    )]
     pub threaded_comments: Vec<Comment>,
     #[serde(rename = "Category")]
     pub category: String,

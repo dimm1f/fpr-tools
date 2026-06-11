@@ -536,6 +536,87 @@ pub struct ReplacementDefinitions {
     pub location_defs: Vec<LocationDef>,
 }
 
+impl ReplacementDefinitions {
+    /// Substitutes `<Replace key="K"/>` placeholders in `text` with values from `defs`.
+    pub fn apply(&self, text: &str) -> String {
+        let mut result = String::with_capacity(text.len());
+        let mut remaining = text;
+        while let Some(start) = remaining.find("<Replace ") {
+            result.push_str(&remaining[..start]);
+            remaining = &remaining[start..];
+            if let Some(end) = remaining.find('>') {
+                let tag = &remaining[..=end];
+                if let Some(key) = attr_value(tag, "key") {
+                    let value = self
+                        .defs
+                        .iter()
+                        .find(|d| d.key == key)
+                        .map(|d| d.value.as_str())
+                        .unwrap_or(key);
+                    result.push_str(value);
+                }
+                remaining = &remaining[end + 1..];
+            } else {
+                break;
+            }
+        }
+        result.push_str(remaining);
+        result
+    }
+}
+
+fn attr_value<'a>(tag: &'a str, attr: &str) -> Option<&'a str> {
+    let i = tag.find(attr)?;
+    let rest = tag[i + attr.len()..].strip_prefix("=\"")?;
+    Some(&rest[..rest.find('"')?])
+}
+
+pub fn strip_html(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_tag = false;
+    for ch in s.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => out.push(ch),
+            _ => {}
+        }
+    }
+    out
+}
+
+pub fn decode_entities(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut remaining = s;
+    while let Some(amp) = remaining.find('&') {
+        out.push_str(&remaining[..amp]);
+        remaining = &remaining[amp..];
+        let (replacement, skip) = if remaining.starts_with("&amp;") {
+            ("&", 5)
+        } else if remaining.starts_with("&lt;") {
+            ("<", 4)
+        } else if remaining.starts_with("&gt;") {
+            (">", 4)
+        } else if remaining.starts_with("&quot;") {
+            ("\"", 6)
+        } else if remaining.starts_with("&apos;") {
+            ("'", 6)
+        } else if remaining.starts_with("&#39;") {
+            ("'", 5)
+        } else if remaining.starts_with("&nbsp;") {
+            (" ", 6)
+        } else {
+            out.push('&');
+            remaining = &remaining[1..];
+            continue;
+        };
+        out.push_str(replacement);
+        remaining = &remaining[skip..];
+    }
+    out.push_str(remaining);
+    out
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Fact {
     #[serde(rename = "@primary")]
@@ -1197,7 +1278,9 @@ impl Fvdl {
         let ranges = self.index.all("Description");
         let mut result = Vec::with_capacity(ranges.len());
         for &(s, e) in ranges {
-            result.push(quick_xml::de::from_reader::<_, Description>(&self.data[s..e])?);
+            result.push(quick_xml::de::from_reader::<_, Description>(
+                &self.data[s..e],
+            )?);
         }
         Ok(result)
     }

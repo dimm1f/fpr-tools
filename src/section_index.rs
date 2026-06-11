@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use quick_xml::{events::Event, Reader};
+use quick_xml::{Reader, events::Event};
 
 pub(crate) struct SectionIndex {
     sections: HashMap<String, Vec<(usize, usize)>>,

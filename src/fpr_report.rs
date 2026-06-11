@@ -5,13 +5,66 @@ use zip::ZipArchive;
 use crate::{
     audit_reader::{Audit, CustomIssue, Issue, RemovedIssue, Tag},
     filter_template::TagNameMap,
-    fvdl_reader::{Fvdl, Vulnerability},
+    fvdl_reader::{AnalysisInfo, Fvdl, Vulnerability},
 };
+
+/// Returns (path, line) for the primary source location of a vulnerability.
+/// Priority: unified trace default node → structural → runtime → configuration → local.
+pub fn primary_location(analysis: &AnalysisInfo) -> Option<(&str, i32)> {
+    analysis
+        .unified
+        .as_ref()
+        .and_then(|u| u.traces.first())
+        .and_then(|trace| {
+            // Single pass: prefer isDefault node, fall back to first node with any location.
+            let mut fallback = None;
+            for e in &trace.primary {
+                let Some(node) = e.node.as_ref() else {
+                    continue;
+                };
+                let Some(pair) = node
+                    .source_location
+                    .as_ref()
+                    .and_then(|loc| loc.path.as_deref().zip(loc.line))
+                else {
+                    continue;
+                };
+                if node.is_default == Some(true) {
+                    return Some(pair);
+                }
+                fallback.get_or_insert(pair);
+            }
+            fallback
+        })
+        .or_else(|| {
+            analysis
+                .structural
+                .as_ref()
+                .and_then(|s| s.source_location.as_ref())
+                .and_then(|loc| loc.path.as_deref().zip(loc.line))
+        })
+        .or_else(|| {
+            analysis
+                .runtime
+                .as_ref()
+                .and_then(|r| r.primary_location.as_ref())
+                .and_then(|loc| loc.path.as_deref().zip(loc.line))
+        })
+        .or_else(|| {
+            analysis
+                .configuration
+                .first()
+                .and_then(|loc| loc.path.as_deref().zip(loc.line))
+        })
+        .or_else(|| {
+            let sr = analysis.local.as_ref()?.source_ref.as_ref()?;
+            sr.path.as_deref().zip(sr.line)
+        })
+}
 
 pub enum AuditIssue<'a> {
     Standard(&'a Issue),
     Custom(&'a CustomIssue),
-    Removed(&'a RemovedIssue),
 }
 
 impl<'a> AuditIssue<'a> {
@@ -19,7 +72,6 @@ impl<'a> AuditIssue<'a> {
         match self {
             AuditIssue::Standard(i) => i.suppressed.unwrap_or(false),
             AuditIssue::Custom(i) => i.suppressed.unwrap_or(false),
-            AuditIssue::Removed(i) => i.suppressed.unwrap_or(false),
         }
     }
 
@@ -27,7 +79,6 @@ impl<'a> AuditIssue<'a> {
         match self {
             AuditIssue::Standard(i) => &i.tags,
             AuditIssue::Custom(i) => &i.tags,
-            AuditIssue::Removed(i) => &i.tags,
         }
     }
 }
@@ -47,8 +98,30 @@ pub struct FprReport {
 
 pub enum VulnerabilityStatus<'a> {
     Unaudited,
+    Removed { issue: &'a RemovedIssue },
     Audited { issue: AuditIssue<'a> },
     Suppressed { issue: AuditIssue<'a> },
+}
+
+impl<'a> VulnerabilityStatus<'a> {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            VulnerabilityStatus::Unaudited => "Unaudited",
+            VulnerabilityStatus::Removed { .. } => "Removed",
+            VulnerabilityStatus::Suppressed { .. } => "Suppressed",
+            VulnerabilityStatus::Audited { .. } => "Audited",
+        }
+    }
+
+    pub fn tags(&self) -> &[Tag] {
+        match self {
+            VulnerabilityStatus::Unaudited => &[],
+            VulnerabilityStatus::Removed { issue } => &issue.tags,
+            VulnerabilityStatus::Audited { issue } | VulnerabilityStatus::Suppressed { issue } => {
+                issue.tags()
+            }
+        }
+    }
 }
 
 pub struct VulnerabilityEntry<'a> {
@@ -90,7 +163,12 @@ impl FprReport {
             TagNameMap::empty()
         };
 
-        Ok(Self { fvdl, audit, tag_names, issue_index })
+        Ok(Self {
+            fvdl,
+            audit,
+            tag_names,
+            issue_index,
+        })
     }
 
     pub fn vulnerabilities(&self) -> anyhow::Result<Vec<VulnerabilityEntry<'_>>> {
@@ -99,7 +177,10 @@ impl FprReport {
             .into_iter()
             .map(|v| {
                 let status = self.resolve_status(&v.instance.instance_id);
-                VulnerabilityEntry { vulnerability: v, status }
+                VulnerabilityEntry {
+                    vulnerability: v,
+                    status,
+                }
             })
             .collect())
     }
@@ -133,9 +214,13 @@ impl FprReport {
         };
         let il = &audit.issue_list;
         let issue = match location {
+            IssueLocation::Removed(i) => {
+                return VulnerabilityStatus::Removed {
+                    issue: &il.removed_issues[*i],
+                };
+            }
             IssueLocation::Standard(i) => AuditIssue::Standard(&il.issues[*i]),
             IssueLocation::Custom(i) => AuditIssue::Custom(&il.custom_issues[*i]),
-            IssueLocation::Removed(i) => AuditIssue::Removed(&il.removed_issues[*i]),
         };
         if issue.is_suppressed() {
             VulnerabilityStatus::Suppressed { issue }
