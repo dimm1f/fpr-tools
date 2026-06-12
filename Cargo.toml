@@ -2,6 +2,13 @@
 name = "fpr-tools"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.94"
+description = "CLI tool for inspecting Fortify FPR security scan reports"
+authors = ["Dimm1F"]
+repository = "https://github.com/dimm1f/fpr-tools"
+license = "MIT"
+keywords = ["fortify", "sast", "security", "fpr"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.102"
