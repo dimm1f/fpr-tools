@@ -11,6 +11,7 @@ use fpr_tools::{
     fpr_report::{FprReport, VulnerabilityStatus, primary_location},
     fvdl_reader::{Fvdl, decode_entities, strip_html},
     list_filter::{self, GroupByField, ListRow, SeverityExpr, SortField, StatusFilter},
+    src_archive::SrcArchive,
 };
 use zip::ZipArchive;
 
@@ -39,6 +40,9 @@ enum Command {
         /// Print rule description and explanation
         #[arg(long, default_value_t = false)]
         explain: bool,
+        /// Print source code snippet around the primary location
+        #[arg(long, default_value_t = false)]
+        code: bool,
     },
 }
 
@@ -265,6 +269,13 @@ fn print_statistics(fpr: &mut ZipArchive<File>, show_tags: bool) -> anyhow::Resu
     Ok(())
 }
 
+fn print_entry(i: usize, row: &ListRow) {
+    println!("# {} {}", i, row.status_label);
+    println!("Instance ID: {}", row.instance_id);
+    println!("Type: {}", row.rule_type);
+    println!("File: {}", row.file_loc);
+}
+
 fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Result<()> {
     let report = FprReport::from_zip(fpr)?;
     let entries = report.vulnerabilities()?;
@@ -282,13 +293,6 @@ fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Result<(
     if rows.is_empty() {
         println!("No vulnerabilities match the given filters.");
         return Ok(());
-    }
-
-    fn print_entry(i: usize, row: &ListRow) {
-        println!("# {} {}", i, row.status_label);
-        println!("ID: {}", row.instance_id);
-        println!("Type: {}", row.rule_type);
-        println!("File: {}", row.file_loc);
     }
 
     if let Some(group_field) = opts.group_by {
@@ -328,10 +332,15 @@ fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Result<(
     Ok(())
 }
 
-fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool) -> anyhow::Result<()> {
+fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool, show_code: bool) -> anyhow::Result<()> {
     const ALIGN: usize = 20;
 
     let report = FprReport::from_zip(fpr)?;
+    let src_archive = if show_code {
+        Some(SrcArchive::from_zip(fpr)?)
+    } else {
+        None
+    };
     let descriptions = report.fvdl.descriptions()?;
     let entries = report.vulnerabilities()?;
 
@@ -398,7 +407,17 @@ fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool) -> a
     println!();
     println!("Primary Location");
     match primary_location(analysis) {
-        Some((path, line)) => println!("  {}:{}", path, line),
+        Some((path, line)) => {
+            println!("  {}:{}", path, line);
+            if let Some((start, snippet)) = src_archive.as_ref().and_then(|a| a.snippet(fpr, path, line, 3)) {
+                println!();
+                for (i, src_line) in snippet.iter().enumerate() {
+                    let lineno = start + i;
+                    let marker = if lineno == line as usize { '>' } else { ' ' };
+                    println!("  {} {:5} | {}", marker, lineno, src_line);
+                }
+            }
+        }
         None => println!("  (none)"),
     }
 
@@ -514,6 +533,7 @@ fn main() -> anyhow::Result<()> {
         Command::Show {
             instance_id,
             explain,
-        } => print_show(&mut fpr, &instance_id, explain),
+            code: show_code,
+        } => print_show(&mut fpr, &instance_id, explain, show_code),
     }
 }
