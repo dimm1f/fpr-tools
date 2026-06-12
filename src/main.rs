@@ -1,3 +1,11 @@
+mod audit_reader;
+mod filter_template;
+mod fpr_report;
+mod fvdl_reader;
+mod list_filter;
+mod section_index;
+mod src_archive;
+
 use std::{
     collections::BTreeMap,
     fs::File,
@@ -5,14 +13,12 @@ use std::{
     path::PathBuf,
 };
 
+use audit_reader::Audit;
 use clap::{Parser, Subcommand};
-use fpr_tools::{
-    audit_reader::Audit,
-    fpr_report::{FprReport, VulnerabilityStatus, primary_location},
-    fvdl_reader::{Fvdl, decode_entities, strip_html},
-    list_filter::{self, GroupByField, ListRow, SeverityExpr, SortField, StatusFilter},
-    src_archive::SrcArchive,
-};
+use fpr_report::{primary_location, FprReport, VulnerabilityStatus};
+use fvdl_reader::{decode_entities, strip_html, Fvdl};
+use list_filter::{GroupByField, ListRow, SeverityExpr, SortField, StatusFilter};
+use src_archive::SrcArchive;
 use zip::ZipArchive;
 
 #[derive(Parser)]

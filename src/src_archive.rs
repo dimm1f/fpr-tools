@@ -24,10 +24,6 @@ impl SrcArchive {
         })
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.index.is_empty()
-    }
-
     /// Returns `(start_line, lines)` for `context` lines around `line` (1-based).
     /// `start_line` is the 1-based line number of the first returned line.
     pub fn snippet(

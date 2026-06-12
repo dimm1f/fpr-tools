@@ -185,26 +185,6 @@ impl FprReport {
             .collect())
     }
 
-    pub fn audited_vulnerabilities(&self) -> anyhow::Result<Vec<VulnerabilityEntry<'_>>> {
-        Ok(self
-            .vulnerabilities()?
-            .into_iter()
-            .filter(|e| !matches!(e.status, VulnerabilityStatus::Unaudited))
-            .collect())
-    }
-
-    pub fn unaudited_vulnerabilities(&self) -> anyhow::Result<Vec<VulnerabilityEntry<'_>>> {
-        Ok(self
-            .vulnerabilities()?
-            .into_iter()
-            .filter(|e| matches!(e.status, VulnerabilityStatus::Unaudited))
-            .collect())
-    }
-
-    pub fn vulnerability_status(&self, instance_id: &str) -> VulnerabilityStatus<'_> {
-        self.resolve_status(instance_id)
-    }
-
     fn resolve_status(&self, instance_id: &str) -> VulnerabilityStatus<'_> {
         let Some(audit) = &self.audit else {
             return VulnerabilityStatus::Unaudited;
