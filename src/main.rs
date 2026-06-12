@@ -15,8 +15,8 @@ use std::{
 
 use audit_reader::Audit;
 use clap::{Parser, Subcommand};
-use fpr_report::{primary_location, FprReport, VulnerabilityStatus};
-use fvdl_reader::{decode_entities, strip_html, Fvdl};
+use fpr_report::{FprReport, VulnerabilityStatus, primary_location};
+use fvdl_reader::{Fvdl, decode_entities, strip_html};
 use list_filter::{GroupByField, ListRow, SeverityExpr, SortField, StatusFilter};
 use src_archive::SrcArchive;
 use zip::ZipArchive;
@@ -338,7 +338,12 @@ fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Result<(
     Ok(())
 }
 
-fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool, show_code: bool) -> anyhow::Result<()> {
+fn print_show(
+    fpr: &mut ZipArchive<File>,
+    instance_id: &str,
+    explain: bool,
+    show_code: bool,
+) -> anyhow::Result<()> {
     const ALIGN: usize = 20;
 
     let report = FprReport::from_zip(fpr)?;
@@ -348,6 +353,7 @@ fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool, show
         None
     };
     let descriptions = report.fvdl.descriptions()?;
+    let node_pool = report.fvdl.unified_node_pool()?;
     let entries = report.vulnerabilities()?;
 
     let matches: Vec<_> = entries
@@ -415,7 +421,10 @@ fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool, show
     match primary_location(analysis) {
         Some((path, line)) => {
             println!("  {}:{}", path, line);
-            if let Some((start, snippet)) = src_archive.as_ref().and_then(|a| a.snippet(fpr, path, line, 3)) {
+            if let Some((start, snippet)) = src_archive
+                .as_ref()
+                .and_then(|a| a.snippet(fpr, path, line, 3))
+            {
                 println!();
                 for (i, src_line) in snippet.iter().enumerate() {
                     let lineno = start + i;
@@ -463,27 +472,35 @@ fn print_show(fpr: &mut ZipArchive<File>, instance_id: &str, explain: bool, show
     if let Some(unified) = &analysis.unified
         && let Some(trace) = unified.traces.first()
     {
+        let format_node = |node: &fvdl_reader::UnifiedPrimaryNode| -> Option<String> {
+            let loc = node.source_location.as_ref()?;
+            let path = loc.path.as_deref().unwrap_or("?");
+            let line = loc.line.unwrap_or(0);
+            let action = node
+                .action
+                .as_ref()
+                .and_then(|a| a.content.as_deref())
+                .unwrap_or("");
+            let action = action.trim();
+            Some(if action.is_empty() {
+                format!("{}:{}", path, line)
+            } else {
+                format!("{}:{} {}", path, line, action)
+            })
+        };
         let nodes: Vec<_> = trace
             .primary
             .iter()
             .filter_map(|e| {
                 if let Some(node) = &e.node {
-                    let loc = node.source_location.as_ref()?;
-                    let path = loc.path.as_deref().unwrap_or("?");
-                    let line = loc.line.unwrap_or(0);
-                    let action = node
-                        .action
-                        .as_ref()
-                        .and_then(|a| a.content.as_deref())
-                        .unwrap_or("");
-                    let action = action.trim();
-                    Some(if action.is_empty() {
-                        format!("{}:{}", path, line)
-                    } else {
-                        format!("{}:{} {}", path, line, action)
-                    })
+                    format_node(node)
+                } else if let Some(ref_id) = e.node_ref_id {
+                    node_pool
+                        .iter()
+                        .find(|n| n.id == Some(ref_id))
+                        .and_then(|n| format_node(n))
                 } else {
-                    Some("(pool ref)".to_owned())
+                    None
                 }
             })
             .collect();

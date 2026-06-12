@@ -581,6 +581,8 @@ pub struct Reason {
 
 #[derive(Debug, Deserialize)]
 pub struct UnifiedPrimaryNode {
+    #[serde(rename = "@id")]
+    pub id: Option<i32>,
     #[serde(rename = "@isDefault")]
     pub is_default: Option<bool>,
     #[allow(dead_code)]
@@ -1115,6 +1117,18 @@ impl Fvdl {
             )?);
         }
         Ok(result)
+    }
+
+    pub fn unified_node_pool(&self) -> anyhow::Result<Vec<UnifiedPrimaryNode>> {
+        #[derive(Deserialize)]
+        struct W {
+            #[serde(rename = "Node", default)]
+            items: Vec<UnifiedPrimaryNode>,
+        }
+        let Some((s, e)) = self.index.first("UnifiedNodePool") else {
+            return Ok(vec![]);
+        };
+        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
     }
 
     pub fn engine_data(&self) -> anyhow::Result<Option<EngineData>> {

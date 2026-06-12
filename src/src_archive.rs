@@ -77,7 +77,11 @@ fn parse_index(xml: &[u8]) -> anyhow::Result<HashMap<String, String>> {
                     .attributes()
                     .filter_map(|a| a.ok())
                     .find(|a| a.key.as_ref() == b"key")
-                    .and_then(|a| std::str::from_utf8(a.value.as_ref()).ok().map(str::to_owned));
+                    .and_then(|a| {
+                        std::str::from_utf8(a.value.as_ref())
+                            .ok()
+                            .map(str::to_owned)
+                    });
                 pending_key = key;
             }
             Event::Text(text) => {
