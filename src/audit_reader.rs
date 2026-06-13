@@ -50,7 +50,6 @@ pub struct TagHistory {
     pub username: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Comment {
     #[serde(rename = "Content")]

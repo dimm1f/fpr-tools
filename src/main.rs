@@ -44,6 +44,9 @@ enum Command {
         /// Print tags and their values for the vulnerability
         #[arg(long, default_value_t = false)]
         tags: bool,
+        /// Print audit comments for the vulnerability
+        #[arg(long, default_value_t = false)]
+        comments: bool,
     },
 }
 
@@ -101,6 +104,7 @@ fn main() -> anyhow::Result<()> {
             explain,
             code: show_code,
             tags: show_tags,
-        } => render::print_show(&mut fpr, &instance_id, explain, show_code, show_tags),
+            comments: show_comments,
+        } => render::print_show(&mut fpr, &instance_id, explain, show_code, show_tags, show_comments),
     }
 }

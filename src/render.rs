@@ -266,6 +266,7 @@ pub fn print_show(
     explain: bool,
     show_code: bool,
     show_tags: bool,
+    show_comments: bool,
 ) -> anyhow::Result<()> {
     const ALIGN: usize = 20;
 
@@ -440,6 +441,23 @@ pub fn print_show(
             println!();
             println!("Explanation");
             println!("{}", render(text).trim());
+        }
+    }
+
+    if show_comments {
+        let comments = entry.status.comments();
+        if !comments.is_empty() {
+            println!();
+            println!("Comments ({})", comments.len());
+            for comment in comments {
+                println!();
+                if let Some(user) = &comment.username {
+                    print!("{} — {}: ", user, comment.timestamp);
+                } else {
+                    println!("{}: ", comment.timestamp);
+                }
+                println!("{}", comment.content);
+            }
         }
     }
 

@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::File};
 use zip::ZipArchive;
 
 use crate::{
-    audit_reader::{Audit, CustomIssue, Issue, RemovedIssue, Tag},
+    audit_reader::{Audit, Comment, CustomIssue, Issue, RemovedIssue, Tag},
     filter_template::TagNameMap,
     fvdl_reader::{AnalysisInfo, Fvdl, Vulnerability},
 };
@@ -81,6 +81,13 @@ impl<'a> AuditIssue<'a> {
             AuditIssue::Custom(i) => &i.tags,
         }
     }
+
+    pub fn comments(&self) -> &[Comment] {
+        match self {
+            AuditIssue::Standard(i) => &i.threaded_comments,
+            AuditIssue::Custom(i) => &i.threaded_comments,
+        }
+    }
 }
 
 enum IssueLocation {
@@ -119,6 +126,16 @@ impl<'a> VulnerabilityStatus<'a> {
             VulnerabilityStatus::Removed { issue } => &issue.tags,
             VulnerabilityStatus::Audited { issue } | VulnerabilityStatus::Suppressed { issue } => {
                 issue.tags()
+            }
+        }
+    }
+
+    pub fn comments(&self) -> &[Comment] {
+        match self {
+            VulnerabilityStatus::Unaudited => &[],
+            VulnerabilityStatus::Removed { issue } => &issue.threaded_comments,
+            VulnerabilityStatus::Audited { issue } | VulnerabilityStatus::Suppressed { issue } => {
+                issue.comments()
             }
         }
     }
