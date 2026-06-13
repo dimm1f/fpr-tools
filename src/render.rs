@@ -265,6 +265,7 @@ pub fn print_show(
     instance_id: &str,
     explain: bool,
     show_code: bool,
+    show_tags: bool,
 ) -> anyhow::Result<()> {
     const ALIGN: usize = 20;
 
@@ -358,20 +359,22 @@ pub fn print_show(
     println!();
     let label = entry.status.as_str();
     println!("Audit Status: {}", label);
-    let mut resolved_tags = entry
-        .status
-        .tags()
-        .iter()
-        .filter_map(|t| {
-            t.value
-                .as_deref()
-                .map(|v| (report.tag_names.resolve(&t.id), v))
-        })
-        .peekable();
-    if resolved_tags.peek().is_some() {
-        println!("  Tags:");
-        for (name, value) in resolved_tags {
-            println!("    {:<ALIGN$}{}", format!("{}:", name), value);
+    if show_tags {
+        let mut resolved_tags = entry
+            .status
+            .tags()
+            .iter()
+            .filter_map(|t| {
+                t.value
+                    .as_deref()
+                    .map(|v| (report.tag_names.resolve(&t.id), v))
+            })
+            .peekable();
+        if resolved_tags.peek().is_some() {
+            println!("  Tags:");
+            for (name, value) in resolved_tags {
+                println!("    {:<ALIGN$}{}", format!("{}:", name), value);
+            }
         }
     }
 

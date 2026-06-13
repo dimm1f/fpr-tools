@@ -28,7 +28,7 @@ enum Command {
     /// Print issue counts by audit status, with optional per-tag breakdown
     Statistics {
         #[arg(long, default_value_t = false)]
-        show_tags: bool,
+        tags: bool,
     },
     /// List vulnerabilities with optional filtering and grouping
     List(ListArgs),
@@ -41,12 +41,15 @@ enum Command {
         /// Print source code snippet around the primary location
         #[arg(long, default_value_t = false)]
         code: bool,
+        /// Print tags and their values for the vulnerability
+        #[arg(long, default_value_t = false)]
+        tags: bool,
     },
 }
 
 #[derive(clap::Args)]
 struct ListArgs {
-    /// Filter by audit status
+    /// Filter by audit status [possible values: all, unaudited, audited, suppressed, removed]
     #[arg(long, value_name = "STATUS", default_value = "all")]
     status: StatusFilter,
     /// Filter by severity expression, e.g. >=3.0, >4, =5.0
@@ -58,7 +61,7 @@ struct ListArgs {
     /// Filter by primary file path (substring, case-insensitive)
     #[arg(long, value_name = "PATTERN")]
     file: Option<String>,
-    /// Group output by field
+    /// Group output by field [possible values: rule, kingdom, file, status]
     #[arg(long, value_name = "FIELD")]
     group_by: Option<GroupByField>,
     /// Sort by field (default: severity descending)
@@ -91,12 +94,13 @@ fn main() -> anyhow::Result<()> {
 
     match args.command {
         Command::Info => render::print_fpr_info(&mut fpr),
-        Command::Statistics { show_tags } => render::print_statistics(&mut fpr, show_tags),
+        Command::Statistics { tags: show_tags } => render::print_statistics(&mut fpr, show_tags),
         Command::List(args) => render::print_list(&mut fpr, args.into()),
         Command::Show {
             instance_id,
             explain,
             code: show_code,
-        } => render::print_show(&mut fpr, &instance_id, explain, show_code),
+            tags: show_tags,
+        } => render::print_show(&mut fpr, &instance_id, explain, show_code, show_tags),
     }
 }

@@ -41,7 +41,7 @@ Show issue counts by audit status (audited, unaudited, suppressed, removed).
 
 ```sh
 fpr-tools report.fpr statistics
-fpr-tools report.fpr statistics --show-tags   # also break down by tag
+fpr-tools report.fpr statistics --tags   # also break down by tag
 ```
 
 #### `list`
@@ -89,14 +89,15 @@ fpr-tools report.fpr show <INSTANCE_ID> [OPTIONS]
 |---|---|
 | `--explain` | Also print the rule description and explanation |
 | `--code` | Print source code snippet from the FPR's src-archive |
+| `--tags` | Print audit tags and their values |
 
-Output includes: rule info, severity and confidence, primary source location, audit status, tags, code trace, and optionally the rule explanation and source snippet.
+Output includes: rule info, severity and confidence, primary source location, audit status, code trace, and optionally tags, rule explanation, and source snippet.
 
 **Examples:**
 
 ```sh
 fpr-tools report.fpr show 65AD6342C39D043E7705A45CE1066B36
-fpr-tools report.fpr show 65AD63 --explain --code   # prefix matching
+fpr-tools report.fpr show 65AD63 --explain --code --tags   # prefix matching
 ```
 
 ## FPR File Format
