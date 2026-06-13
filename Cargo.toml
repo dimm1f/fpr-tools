@@ -16,3 +16,10 @@ clap = { version = "4.6.1", features = ["derive"] }
 quick-xml = { version = "0.40.1", features = ["serialize"] }
 serde = { version = "1.0.228", features = ["derive"] }
 zip = "8.6.0"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
+opt-level = 3
+panic = "abort"
