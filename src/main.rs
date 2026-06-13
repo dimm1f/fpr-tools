@@ -35,6 +35,9 @@ enum Command {
     /// Show full details for one vulnerability by instance ID (or unambiguous prefix)
     Show {
         instance_id: String,
+        /// Enable all optional output sections
+        #[arg(long, default_value_t = false)]
+        all: bool,
         /// Print rule description and explanation
         #[arg(long, default_value_t = false)]
         explain: bool,
@@ -101,10 +104,18 @@ fn main() -> anyhow::Result<()> {
         Command::List(args) => render::print_list(&mut fpr, args.into()),
         Command::Show {
             instance_id,
+            all,
             explain,
             code: show_code,
             tags: show_tags,
             comments: show_comments,
-        } => render::print_show(&mut fpr, &instance_id, explain, show_code, show_tags, show_comments),
+        } => render::print_show(
+            &mut fpr,
+            &instance_id,
+            all || explain,
+            all || show_code,
+            all || show_tags,
+            all || show_comments,
+        ),
     }
 }
