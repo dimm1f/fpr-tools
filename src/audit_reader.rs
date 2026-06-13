@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::io::Read;
 
 use serde::{Deserialize, Deserializer};
@@ -36,6 +35,7 @@ pub struct Tag {
     pub value: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct TagHistory {
     #[serde(rename = "@resolve")]
@@ -50,6 +50,7 @@ pub struct TagHistory {
     pub username: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Comment {
     #[serde(rename = "Content")]
@@ -60,6 +61,7 @@ pub struct Comment {
     pub timestamp: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Issue {
     #[serde(rename = "@instanceId")]
@@ -96,6 +98,7 @@ pub struct Issue {
     pub threaded_comments: Vec<Comment>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct CustomIssue {
     #[serde(rename = "@instanceId")]
@@ -142,6 +145,7 @@ pub struct CustomIssue {
     pub rule_id: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct RemovedIssue {
     #[serde(rename = "@instanceId")]
@@ -211,12 +215,14 @@ pub struct IssueList {
 #[derive(Debug, Deserialize)]
 pub struct ProjectInfo {
     #[serde(rename = "Description")]
+    #[allow(dead_code)]
     pub description: Option<String>,
     #[serde(rename = "Name")]
     pub name: Option<String>,
     #[serde(rename = "ProjectVersionName")]
     pub project_version_name: Option<String>,
     #[serde(rename = "ProjectVersionId")]
+    #[allow(dead_code)]
     pub project_version_id: Option<i64>,
     #[serde(rename = "WriteDate")]
     pub write_date: Option<String>,
@@ -225,6 +231,7 @@ pub struct ProjectInfo {
 #[derive(Debug, Deserialize)]
 pub struct Audit {
     #[serde(rename = "@version")]
+    #[allow(dead_code)]
     pub version: String,
     #[serde(rename = "ProjectInfo")]
     pub project_info: ProjectInfo,

@@ -579,29 +579,25 @@ pub struct Reason {
     pub induction_ref_id: Option<i32>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct UnifiedPrimaryNode {
     #[serde(rename = "@id")]
     pub id: Option<i32>,
     #[serde(rename = "@isDefault")]
     pub is_default: Option<bool>,
-    #[allow(dead_code)]
     #[serde(rename = "@detailsOnly")]
     pub details_only: Option<bool>,
-    #[allow(dead_code)]
     #[serde(rename = "@label")]
     pub label: Option<String>,
     #[serde(rename = "SourceLocation")]
     pub source_location: Option<SourceLocation>,
-    #[allow(dead_code)]
     #[serde(rename = "SecondaryLocation")]
     pub secondary_location: Option<SourceLocation>,
     #[serde(rename = "Action")]
     pub action: Option<Action>,
-    #[allow(dead_code)]
     #[serde(rename = "Reason")]
     pub reason: Option<Reason>,
-    #[allow(dead_code)]
     #[serde(rename = "Knowledge", default, deserialize_with = "unwrap_knowledge")]
     pub facts: Vec<Fact>,
 }
@@ -635,25 +631,21 @@ pub struct Unified {
     pub traces: Vec<UnifiedTrace>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct SourceRef {
     #[serde(rename = "@path")]
     pub path: Option<String>,
     #[serde(rename = "@line")]
     pub line: Option<i32>,
-    #[allow(dead_code)]
     #[serde(rename = "@lineEnd")]
     pub line_end: Option<i32>,
-    #[allow(dead_code)]
     #[serde(rename = "@colStart")]
     pub col_start: Option<i32>,
-    #[allow(dead_code)]
     #[serde(rename = "@colEnd")]
     pub col_end: Option<i32>,
-    #[allow(dead_code)]
     #[serde(rename = "@contextId")]
     pub context_id: Option<i32>,
-    #[allow(dead_code)]
     #[serde(rename = "@snippet")]
     pub snippet: Option<String>,
 }
@@ -667,17 +659,15 @@ pub struct Arg {
     pub content: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Local {
     #[serde(rename = "SourceRef")]
     pub source_ref: Option<SourceRef>,
-    #[allow(dead_code)]
     #[serde(rename = "Context", default, deserialize_with = "unwrap_context_id")]
     pub context_id: Option<i32>,
-    #[allow(dead_code)]
     #[serde(rename = "Arg", default)]
     pub args: Vec<Arg>,
-    #[allow(dead_code)]
     #[serde(rename = "ExternalID", default)]
     pub external_ids: Vec<ExternalId>,
 }
@@ -859,47 +849,40 @@ pub struct CustomDescription {
     pub references: Vec<Reference>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct Description {
     #[serde(rename = "@classID")]
     pub class_id: Option<String>,
-    #[allow(dead_code)]
     #[serde(rename = "@contentType")]
     pub content_type: Option<String>,
     #[serde(rename = "Abstract")]
     pub _abstract: Option<String>,
     #[serde(rename = "Explanation")]
     pub explanation: Option<String>,
-    #[allow(dead_code)]
     #[serde(rename = "Recommendations")]
     pub recommendations: Option<String>,
-    #[allow(dead_code)]
     #[serde(rename = "Details")]
     pub details: Option<String>,
-    #[allow(dead_code)]
     #[serde(rename = "Tips", default, deserialize_with = "unwrap_tips")]
     pub tips: Vec<String>,
-    #[allow(dead_code)]
     #[serde(rename = "References", default, deserialize_with = "unwrap_references")]
     pub references: Vec<Reference>,
-    #[allow(dead_code)]
     #[serde(rename = "CustomDescription", default)]
     pub custom_descriptions: Vec<CustomDescription>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct RulePack {
-    #[allow(dead_code)]
     #[serde(rename = "RulePackID")]
     pub rule_pack_id: Option<String>,
-    #[allow(dead_code)]
     #[serde(rename = "SKU")]
     pub sku: Option<String>,
     #[serde(rename = "Name")]
     pub name: Option<String>,
     #[serde(rename = "Version")]
     pub version: Option<String>,
-    #[allow(dead_code)]
     #[serde(rename = "MAC")]
     pub mac: Option<String>,
 }
@@ -1010,6 +993,7 @@ pub struct InactiveGrouping {
     pub count: Option<i64>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct EngineData {
     #[serde(rename = "EngineVersion")]
@@ -1022,16 +1006,12 @@ pub struct EngineData {
     pub inactive_results: Vec<InactiveGrouping>,
     #[serde(rename = "RulePacks")]
     pub rule_packs: Option<RulePackList>,
-    #[allow(dead_code)]
     #[serde(rename = "ExpiredRulePacks")]
     pub expired_rule_packs: Option<RulePackList>,
-    #[allow(dead_code)]
     #[serde(rename = "UnlicensedRulePacks")]
     pub unlicensed_rule_packs: Option<RulePackList>,
-    #[allow(dead_code)]
     #[serde(rename = "Properties", default)]
     pub properties: Vec<PropertyList>,
-    #[allow(dead_code)]
     #[serde(
         rename = "CommandLine",
         default,
@@ -1042,13 +1022,10 @@ pub struct EngineData {
     pub errors: Vec<Err>,
     #[serde(rename = "MachineInfo")]
     pub machine_info: Option<MachineInfo>,
-    #[allow(dead_code)]
     #[serde(rename = "FilterResult")]
     pub filter_result: Option<FilterResult>,
-    #[allow(dead_code)]
     #[serde(rename = "RuleInfo", default, deserialize_with = "unwrap_rule_info")]
     pub rule_info: Vec<EngineRuleEntry>,
-    #[allow(dead_code)]
     #[serde(rename = "LicenseInfo")]
     pub license_info: Option<LicenseInfo>,
 }

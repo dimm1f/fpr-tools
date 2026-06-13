@@ -150,22 +150,24 @@ pub struct ListRow {
     pub instance_id: String,
 }
 
-pub fn apply(
-    entries: &[VulnerabilityEntry<'_>],
-    status: &StatusFilter,
-    severity: Option<&SeverityExpr>,
-    rule: Option<&str>,
-    file: Option<&str>,
-    sort: Option<&SortField>,
-    limit: Option<usize>,
-) -> Vec<ListRow> {
-    let rule_lc = rule.map(str::to_lowercase);
-    let file_lc = file.map(str::to_lowercase);
+pub struct ListOptions {
+    pub status: StatusFilter,
+    pub severity: Option<SeverityExpr>,
+    pub rule: Option<String>,
+    pub file: Option<String>,
+    pub group_by: Option<GroupByField>,
+    pub sort: Option<SortField>,
+    pub limit: Option<usize>,
+}
+
+pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<ListRow> {
+    let rule_lc = opts.rule.as_deref().map(str::to_lowercase);
+    let file_lc = opts.file.as_deref().map(str::to_lowercase);
 
     let mut rows: Vec<ListRow> = entries
         .iter()
         .filter_map(|entry| {
-            if !status.matches(&entry.status) {
+            if !opts.status.matches(&entry.status) {
                 return None;
             }
 
@@ -174,7 +176,7 @@ pub fn apply(
                 .instance
                 .instance_severity
                 .unwrap_or(0.0);
-            if let Some(expr) = severity
+            if let Some(expr) = opts.severity.as_ref()
                 && !expr.matches(sev)
             {
                 return None;
@@ -219,7 +221,7 @@ pub fn apply(
         })
         .collect();
 
-    match sort {
+    match opts.sort {
         None | Some(SortField::Severity) => {
             rows.sort_by(|a, b| {
                 b.sev
@@ -232,7 +234,7 @@ pub fn apply(
         Some(SortField::Status) => rows.sort_by(|a, b| a.status_label.cmp(b.status_label)),
     }
 
-    if let Some(n) = limit {
+    if let Some(n) = opts.limit {
         rows.truncate(n);
     }
 
