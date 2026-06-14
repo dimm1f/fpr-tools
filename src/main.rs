@@ -34,7 +34,8 @@ enum Command {
     List(ListArgs),
     /// Show full details for one vulnerability by instance ID (or unambiguous prefix)
     Show {
-        instance_id: String,
+        #[arg(num_args = 1..)]
+        instance_ids: Vec<String>,
         /// Enable all optional output sections
         #[arg(long, default_value_t = false)]
         all: bool,
@@ -103,7 +104,7 @@ fn main() -> anyhow::Result<()> {
         Command::Statistics { tags: show_tags } => render::print_statistics(&mut fpr, show_tags),
         Command::List(args) => render::print_list(&mut fpr, args.into()),
         Command::Show {
-            instance_id,
+            instance_ids,
             all,
             explain,
             code: show_code,
@@ -111,7 +112,7 @@ fn main() -> anyhow::Result<()> {
             comments: show_comments,
         } => render::print_show(
             &mut fpr,
-            &instance_id,
+            &instance_ids,
             all || explain,
             all || show_code,
             all || show_tags,

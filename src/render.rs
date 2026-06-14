@@ -262,7 +262,7 @@ pub fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Resu
 
 pub fn print_show(
     fpr: &mut ZipArchive<File>,
-    instance_id: &str,
+    ids: &[String],
     explain: bool,
     show_code: bool,
     show_tags: bool,
@@ -280,183 +280,188 @@ pub fn print_show(
     let node_pool = report.fvdl.unified_node_pool()?;
     let entries = report.vulnerabilities()?;
 
-    let matches: Vec<_> = entries
-        .iter()
-        .filter(|e| {
-            e.vulnerability
-                .instance
-                .instance_id
-                .starts_with(instance_id)
-        })
-        .collect();
-
-    if matches.is_empty() {
-        anyhow::bail!("No vulnerability found with ID prefix '{instance_id}'");
-    }
-    if matches.len() > 1 {
-        eprintln!(
-            "Ambiguous prefix '{instance_id}' matches {} vulnerabilities:",
-            matches.len()
-        );
-        for e in &matches {
-            eprintln!("  {}", e.vulnerability.instance.instance_id);
+    for (i, instance_id) in ids.iter().enumerate() {
+        if i > 0 {
+            println!();
         }
-        anyhow::bail!("Provide a longer prefix to disambiguate");
-    }
 
-    let entry = matches[0];
-    let rule = &entry.vulnerability.rule;
-    let inst = &entry.vulnerability.instance;
-    let analysis = &entry.vulnerability.analysis;
-
-    println!("Rule");
-    if let Some(k) = &rule.kind {
-        println!("{:<ALIGN$}{}", "  Kingdom:", k);
-    }
-    if let Some(t) = &rule.typ {
-        println!("{:<ALIGN$}{}", "  Type:", t);
-    }
-    if let Some(s) = &rule.subtyp {
-        println!("{:<ALIGN$}{}", "  Subtype:", s);
-    }
-    println!("{:<ALIGN$}{}", "  Rule ID:", rule.rule_id);
-    if let Some(sev) = rule.default_severity {
-        println!("{:<ALIGN$}{:.1}", "  Default severity:", sev);
-    }
-
-    println!();
-    println!("Instance");
-    println!("{:<ALIGN$}{}", "  Instance ID:", inst.instance_id);
-    if let Some(sev) = inst.instance_severity {
-        println!("{:<ALIGN$}{:.1}", "  Severity:", sev);
-    }
-    if let Some(conf) = inst.confidence {
-        println!("{:<ALIGN$}{:.1}", "  Confidence:", conf);
-    }
-    if let Some(desc) = &inst.instance_description {
-        println!("{:<ALIGN$}{}", "  Description:", desc);
-    }
-
-    println!();
-    println!("Primary Location");
-    match primary_location(analysis) {
-        Some((path, line)) => {
-            println!("  {}:{}", path, line);
-            if let Some((start, snippet)) = src_archive
-                .as_ref()
-                .and_then(|a| a.snippet(fpr, path, line, 3))
-            {
-                println!();
-                for (i, src_line) in snippet.iter().enumerate() {
-                    let lineno = start + i;
-                    let marker = if lineno == line as usize { '>' } else { ' ' };
-                    println!("  {} {:5} | {}", marker, lineno, src_line);
-                }
-            }
-        }
-        None => println!("  (none)"),
-    }
-
-    println!();
-    let label = entry.status.as_str();
-    println!("Audit Status: {}", label);
-    if show_tags {
-        let mut resolved_tags = entry
-            .status
-            .tags()
+        let matches: Vec<_> = entries
             .iter()
-            .filter_map(|t| {
-                t.value
-                    .as_deref()
-                    .map(|v| (report.tag_names.resolve(&t.id), v))
-            })
-            .peekable();
-        if resolved_tags.peek().is_some() {
-            println!("  Tags:");
-            for (name, value) in resolved_tags {
-                println!("    {:<ALIGN$}{}", format!("{}:", name), value);
-            }
-        }
-    }
-
-    if !inst.meta_info.is_empty() {
-        println!();
-        println!("MetaInfo");
-        for group in &inst.meta_info {
-            if let Some(content) = &group.content {
-                println!("  {:<ALIGN$}{}", format!("{}:", group.name), content);
-            }
-        }
-    }
-
-    if let Some(unified) = &analysis.unified
-        && let Some(trace) = unified.traces.first()
-    {
-        let nodes: Vec<_> = trace
-            .primary
-            .iter()
-            .filter_map(|e| {
-                if let Some(node) = &e.node {
-                    format_node(node)
-                } else if let Some(ref_id) = e.node_ref_id {
-                    node_pool
-                        .iter()
-                        .find(|n| n.id == Some(ref_id))
-                        .and_then(format_node)
-                } else {
-                    None
-                }
+            .filter(|e| {
+                e.vulnerability
+                    .instance
+                    .instance_id
+                    .starts_with(instance_id.as_str())
             })
             .collect();
-        if !nodes.is_empty() {
-            println!();
-            println!("Trace ({} steps)", nodes.len());
-            for (i, step) in nodes.iter().enumerate() {
-                println!("  {}. {}", i + 1, step);
+
+        if matches.is_empty() {
+            anyhow::bail!("No vulnerability found with ID prefix '{instance_id}'");
+        }
+        if matches.len() > 1 {
+            eprintln!(
+                "Ambiguous prefix '{instance_id}' matches {} vulnerabilities:",
+                matches.len()
+            );
+            for e in &matches {
+                eprintln!("  {}", e.vulnerability.instance.instance_id);
+            }
+            anyhow::bail!("Provide a longer prefix to disambiguate");
+        }
+
+        let entry = matches[0];
+        let rule = &entry.vulnerability.rule;
+        let inst = &entry.vulnerability.instance;
+        let analysis = &entry.vulnerability.analysis;
+
+        println!("Vulnerability");
+        println!("{:<ALIGN$}{}", "  Instance ID:", inst.instance_id);
+        if let Some(sev) = inst.instance_severity {
+            println!("{:<ALIGN$}{:.1}", "  Severity:", sev);
+        }
+        if let Some(conf) = inst.confidence {
+            println!("{:<ALIGN$}{:.1}", "  Confidence:", conf);
+        }
+        if let Some(desc) = &inst.instance_description {
+            println!("{:<ALIGN$}{}", "  Description:", desc);
+        }
+
+        println!();
+        if let Some(k) = &rule.kind {
+            println!("{:<ALIGN$}{}", "  Kingdom:", k);
+        }
+        if let Some(t) = &rule.typ {
+            println!("{:<ALIGN$}{}", "  Type:", t);
+        }
+        if let Some(s) = &rule.subtyp {
+            println!("{:<ALIGN$}{}", "  Subtype:", s);
+        }
+        println!("{:<ALIGN$}{}", "  Rule ID:", rule.rule_id);
+        if let Some(sev) = rule.default_severity {
+            println!("{:<ALIGN$}{:.1}", "  Default severity:", sev);
+        }
+
+        println!();
+        let label = entry.status.as_str();
+        println!("Audit Status: {}", label);
+        if show_tags {
+            let mut resolved_tags = entry
+                .status
+                .tags()
+                .iter()
+                .filter_map(|t| {
+                    t.value
+                        .as_deref()
+                        .map(|v| (report.tag_names.resolve(&t.id), v))
+                })
+                .peekable();
+            if resolved_tags.peek().is_some() {
+                println!("Tags:");
+                for (name, value) in resolved_tags {
+                    println!("{:<ALIGN$}{}", format!("  {}:", name), value);
+                }
             }
         }
-    }
 
-    let defs = analysis
-        .unified
-        .as_ref()
-        .and_then(|u| u.replacement_definitions.as_ref());
-
-    if let Some(desc) = descriptions
-        .iter()
-        .find(|d| d.class_id.as_deref() == Some(&rule.rule_id))
-    {
-        let render = |text: &str| -> String {
-            let substituted = defs
-                .map(|d| d.apply(text))
-                .unwrap_or_else(|| text.to_owned());
-            decode_entities(&strip_html(&substituted))
-        };
-        if let Some(text) = &desc._abstract {
+        if !inst.meta_info.is_empty() {
             println!();
-            println!("Description");
-            println!("{}", render(text).trim());
-        }
-        if explain && let Some(text) = &desc.explanation {
-            println!();
-            println!("Explanation");
-            println!("{}", render(text).trim());
-        }
-    }
-
-    if show_comments {
-        let comments = entry.status.comments();
-        if !comments.is_empty() {
-            println!();
-            println!("Comments ({})", comments.len());
-            for comment in comments {
-                println!();
-                if let Some(user) = &comment.username {
-                    print!("{} — {}: ", user, comment.timestamp);
-                } else {
-                    println!("{}: ", comment.timestamp);
+            println!("MetaInfo");
+            for group in &inst.meta_info {
+                if let Some(content) = &group.content {
+                    println!("  {:<ALIGN$}{}", format!("{}:", group.name), content);
                 }
-                println!("{}", comment.content);
+            }
+        }
+
+        println!();
+        println!("Primary Location");
+        match primary_location(analysis) {
+            Some((path, line)) => {
+                println!("  {}:{}", path, line);
+                if let Some((start, snippet)) = src_archive
+                    .as_ref()
+                    .and_then(|a| a.snippet(fpr, path, line, 3))
+                {
+                    println!();
+                    for (i, src_line) in snippet.iter().enumerate() {
+                        let lineno = start + i;
+                        let marker = if lineno == line as usize { '>' } else { ' ' };
+                        println!("  {} {:5} | {}", marker, lineno, src_line);
+                    }
+                }
+            }
+            None => println!("  (none)"),
+        }
+
+        if let Some(unified) = &analysis.unified
+            && let Some(trace) = unified.traces.first()
+        {
+            let nodes: Vec<_> = trace
+                .primary
+                .iter()
+                .filter_map(|e| {
+                    if let Some(node) = &e.node {
+                        format_node(node)
+                    } else if let Some(ref_id) = e.node_ref_id {
+                        node_pool
+                            .iter()
+                            .find(|n| n.id == Some(ref_id))
+                            .and_then(format_node)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            if !nodes.is_empty() {
+                println!();
+                println!("Trace ({} steps)", nodes.len());
+                for (i, step) in nodes.iter().enumerate() {
+                    println!("  {}. {}", i + 1, step);
+                }
+            }
+        }
+
+        let defs = analysis
+            .unified
+            .as_ref()
+            .and_then(|u| u.replacement_definitions.as_ref());
+
+        if let Some(desc) = descriptions
+            .iter()
+            .find(|d| d.class_id.as_deref() == Some(&rule.rule_id))
+        {
+            let render = |text: &str| -> String {
+                let substituted = defs
+                    .map(|d| d.apply(text))
+                    .unwrap_or_else(|| text.to_owned());
+                decode_entities(&strip_html(&substituted))
+            };
+            if let Some(text) = &desc._abstract {
+                println!();
+                println!("Description");
+                println!("{}", render(text).trim());
+            }
+            if explain && let Some(text) = &desc.explanation {
+                println!();
+                println!("Explanation");
+                println!("{}", render(text).trim());
+            }
+        }
+
+        if show_comments {
+            let comments = entry.status.comments();
+            if !comments.is_empty() {
+                println!();
+                println!("Comments ({})", comments.len());
+                for comment in comments {
+                    println!();
+                    if let Some(user) = &comment.username {
+                        print!("{} — {}: ", user, comment.timestamp);
+                    } else {
+                        println!("{}: ", comment.timestamp);
+                    }
+                    println!("{}", comment.content);
+                }
             }
         }
     }
