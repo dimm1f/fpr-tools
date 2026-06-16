@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::File};
 use zip::ZipArchive;
 
 use crate::{
-    audit_reader::{Audit, Comment, CustomIssue, Issue, RemovedIssue, Tag},
+    audit_reader::{Audit, Comment, CustomIssue, Issue, RemovedIssue, Tag, TagHistory},
     filter_template::TagNameMap,
     fvdl_reader::{AnalysisInfo, Fvdl, Vulnerability},
 };
@@ -88,6 +88,21 @@ impl<'a> AuditIssue<'a> {
             AuditIssue::Custom(i) => &i.threaded_comments,
         }
     }
+
+    pub fn audit_trail(&self) -> Vec<&TagHistory> {
+        match self {
+            AuditIssue::Standard(i) => i
+                .manager_audit_trail
+                .iter()
+                .chain(i.client_audit_trail.iter())
+                .collect(),
+            AuditIssue::Custom(i) => i
+                .manager_audit_trail
+                .iter()
+                .chain(i.client_audit_trail.iter())
+                .collect(),
+        }
+    }
 }
 
 enum IssueLocation {
@@ -136,6 +151,20 @@ impl<'a> VulnerabilityStatus<'a> {
             VulnerabilityStatus::Removed { issue } => &issue.threaded_comments,
             VulnerabilityStatus::Audited { issue } | VulnerabilityStatus::Suppressed { issue } => {
                 issue.comments()
+            }
+        }
+    }
+
+    pub fn audit_trail(&self) -> Vec<&TagHistory> {
+        match self {
+            VulnerabilityStatus::Unaudited => vec![],
+            VulnerabilityStatus::Removed { issue } => issue
+                .manager_audit_trail
+                .iter()
+                .chain(issue.client_audit_trail.iter())
+                .collect(),
+            VulnerabilityStatus::Audited { issue } | VulnerabilityStatus::Suppressed { issue } => {
+                issue.audit_trail()
             }
         }
     }

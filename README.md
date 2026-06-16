@@ -92,15 +92,16 @@ fpr-tools report.fpr show <INSTANCE_ID> [OPTIONS]
 | `--code` | Print source code snippet from the FPR's src-archive |
 | `--tags` | Print audit tags and their values |
 | `--comments` | Print audit comments (threaded comments from reviewers) |
+| `--history` | Print audit trail (tag changes, suppression, removal history) |
 
-Output includes: rule info, severity and confidence, primary source location, audit status, code trace, and optionally tags, comments, rule explanation, and source snippet.
+Output includes: rule info, severity and confidence, primary source location, audit status, code trace, and optionally tags, comments, history, rule explanation, and source snippet.
 
 **Examples:**
 
 ```sh
 fpr-tools report.fpr show 65AD6342C39D043E7705A45CE1066B36
 fpr-tools report.fpr show 65AD63 --all                                # all optional sections
-fpr-tools report.fpr show 65AD63 --explain --code --tags --comments   # prefix matching
+fpr-tools report.fpr show 65AD63 --explain --code --tags --comments --history   # prefix matching
 ```
 
 ## FPR File Format

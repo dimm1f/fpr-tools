@@ -267,6 +267,7 @@ pub fn print_show(
     show_code: bool,
     show_tags: bool,
     show_comments: bool,
+    show_history: bool,
 ) -> anyhow::Result<()> {
     const ALIGN: usize = 20;
 
@@ -456,11 +457,31 @@ pub fn print_show(
                 for comment in comments {
                     println!();
                     if let Some(user) = &comment.username {
-                        print!("{} — {}: ", user, comment.timestamp);
+                        print!("{} at {}: ", user, comment.timestamp);
                     } else {
                         println!("{}: ", comment.timestamp);
                     }
                     println!("{}", comment.content);
+                }
+            }
+        }
+
+        if show_history {
+            let trail = entry.status.audit_trail();
+            if !trail.is_empty() {
+                println!();
+                println!("History ({})", trail.len());
+                for h in trail {
+                    println!();
+                    let tag_name = report.tag_names.resolve(&h.tag.id);
+                    let new_val = h.tag.value.as_deref().unwrap_or("(none)");
+                    let old_val = h.old_value.as_deref().unwrap_or("(none)");
+                    if let Some(user) = &h.username {
+                        print!("{} at {}: ", user, h.edit_time.as_deref().unwrap_or("?"));
+                    } else {
+                        print!("{}: ", h.edit_time.as_deref().unwrap_or("?"));
+                    }
+                    println!("{}: {} -> {}", tag_name, old_val, new_val);
                 }
             }
         }

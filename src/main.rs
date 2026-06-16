@@ -51,6 +51,9 @@ enum Command {
         /// Print audit comments for the vulnerability
         #[arg(long, default_value_t = false)]
         comments: bool,
+        /// Print audit trail (tag changes, suppression, removal history)
+        #[arg(long, default_value_t = false)]
+        history: bool,
     },
 }
 
@@ -110,6 +113,7 @@ fn main() -> anyhow::Result<()> {
             code: show_code,
             tags: show_tags,
             comments: show_comments,
+            history: show_history,
         } => render::print_show(
             &mut fpr,
             &instance_ids,
@@ -117,6 +121,7 @@ fn main() -> anyhow::Result<()> {
             all || show_code,
             all || show_tags,
             all || show_comments,
+            all || show_history,
         ),
     }
 }

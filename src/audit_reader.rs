@@ -35,7 +35,6 @@ pub struct Tag {
     pub value: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct TagHistory {
     #[serde(rename = "@resolve")]
