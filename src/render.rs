@@ -414,10 +414,14 @@ pub fn print_show(
                 })
                 .collect();
             if !nodes.is_empty() {
+                let number_width = nodes.len().to_string().len();
                 println!();
                 println!("Trace ({} steps)", nodes.len());
-                for (i, step) in nodes.iter().enumerate() {
-                    println!("  {}. {}", i + 1, step);
+                for (i, (loc, rule_id)) in nodes.iter().enumerate() {
+                    println!("  {:>number_width$}. {}", i + 1, loc);
+                    if let Some(rid) = rule_id {
+                        println!("  {}  Rule: [{}]", " ".repeat(number_width), rid);
+                    }
                 }
             }
         }
@@ -497,7 +501,7 @@ fn print_entry(i: usize, row: &ListRow) {
     println!("File: {}", row.file_loc);
 }
 
-fn format_node(node: &UnifiedPrimaryNode) -> Option<String> {
+fn format_node(node: &UnifiedPrimaryNode) -> Option<(String, Option<&str>)> {
     let loc = node.source_location.as_ref()?;
     let path = loc.path.as_deref().unwrap_or("?");
     let line = loc.line.unwrap_or(0);
@@ -507,9 +511,11 @@ fn format_node(node: &UnifiedPrimaryNode) -> Option<String> {
         .and_then(|a| a.content.as_deref())
         .unwrap_or("");
     let action = action.trim();
-    Some(if action.is_empty() {
+    let loc = if action.is_empty() {
         format!("{}:{}", path, line)
     } else {
         format!("{}:{} {}", path, line, action)
-    })
+    };
+    let rule_id = node.reason.as_ref().and_then(|r| r.rule_id.as_deref());
+    Some((loc, rule_id))
 }
