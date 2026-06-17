@@ -38,6 +38,17 @@ impl TagNameMap {
     }
 
     pub fn resolve<'a>(&'a self, guid: &'a str) -> &'a str {
-        self.0.get(guid).map(String::as_str).unwrap_or(guid)
+        self.0
+            .get(guid)
+            .map(String::as_str)
+            .or_else(|| Self::resolve_embeded(guid))
+            .unwrap_or(guid)
+    }
+
+    fn resolve_embeded(guid: &str) -> Option<&str> {
+        match guid {
+            "22222222-2222-2222-2222-222222222222" => Some("suppressed"),
+            _ => None,
+        }
     }
 }
