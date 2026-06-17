@@ -11,7 +11,7 @@ use crate::{
     fpr_report::{FprReport, VulnerabilityStatus, primary_location},
     fvdl_reader::{Fvdl, UnifiedPrimaryNode, decode_entities, strip_html},
     list_filter::{self, GroupByField, ListOptions, ListRow},
-    src_archive::SrcArchive,
+    src_archive_reader::SrcArchive,
 };
 
 pub fn print_fpr_info(fpr: &mut ZipArchive<File>) -> anyhow::Result<()> {

@@ -37,6 +37,7 @@ pub struct Tag {
 
 #[derive(Debug, Deserialize)]
 pub struct TagHistory {
+    #[allow(dead_code)]
     #[serde(rename = "@resolve")]
     pub resolve: Option<bool>,
     #[serde(rename = "Tag")]

@@ -1,11 +1,11 @@
 mod audit_reader;
-mod filter_template;
+mod filter_template_reader;
 mod fpr_report;
 mod fvdl_reader;
 mod list_filter;
 mod render;
 mod section_index;
-mod src_archive;
+mod src_archive_reader;
 
 use std::{fs::File, path::PathBuf};
 

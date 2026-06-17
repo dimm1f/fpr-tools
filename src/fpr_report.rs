@@ -4,7 +4,7 @@ use zip::ZipArchive;
 
 use crate::{
     audit_reader::{Audit, Comment, CustomIssue, Issue, RemovedIssue, Tag, TagHistory},
-    filter_template::TagNameMap,
+    filter_template_reader::TagNameMap,
     fvdl_reader::{AnalysisInfo, Fvdl, Vulnerability},
 };
 
