@@ -224,19 +224,7 @@ pub fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Resu
     }
 
     if let Some(group_field) = opts.group_by {
-        let group_key = |row: &ListRow| -> String {
-            match group_field {
-                GroupByField::Rule => row.rule_type.clone(),
-                GroupByField::Kingdom => row.kingdom.clone(),
-                GroupByField::File => row.file_loc.clone(),
-                GroupByField::Status => row.status_label.to_owned(),
-            }
-        };
-
-        let mut groups: BTreeMap<String, Vec<&ListRow>> = BTreeMap::new();
-        for row in &rows {
-            groups.entry(group_key(row)).or_default().push(row);
-        }
+        let groups = list_filter::group(rows, group_field);
 
         let mut i = 1usize;
         for (key, group_rows) in &groups {

@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use anyhow::anyhow;
 
@@ -234,9 +234,25 @@ pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<List
         Some(SortField::Status) => rows.sort_by(|a, b| a.status_label.cmp(b.status_label)),
     }
 
+    // truncate after sort so --limit always returns the top-N by the chosen sort field
     if let Some(n) = opts.limit {
         rows.truncate(n);
     }
 
     rows
+}
+
+pub fn group(rows: Vec<ListRow>, group_by: GroupByField) -> BTreeMap<String, Vec<ListRow>> {
+    let mut groups: BTreeMap<String, Vec<ListRow>> = BTreeMap::new();
+    for row in rows {
+        let key = match group_by {
+            GroupByField::Rule => row.rule_type.clone(),
+            GroupByField::Kingdom => row.kingdom.clone(),
+            GroupByField::File => row.file_loc.clone(),
+            GroupByField::Status => row.status_label.to_owned(),
+        };
+
+        groups.entry(key).or_default().push(row);
+    }
+    groups
 }
