@@ -149,6 +149,7 @@ pub struct ListOptions {
     pub group_by: Option<GroupByField>,
     pub sort: Option<SortField>,
     pub limit: Option<usize>,
+    pub offset: Option<usize>,
 }
 
 pub struct ListRow<'a> {
@@ -229,7 +230,10 @@ pub fn apply<'a>(entries: &'a [VulnerabilityEntry<'_>], opts: &ListOptions) -> V
         Some(SortField::Status) => rows.sort_by(|a, b| a.status_label.cmp(b.status_label)),
     }
 
-    // truncate after sort so --limit always returns the top-N by the chosen sort field
+    // offset and truncate after sort so --limit/--offset always operate on the chosen sort field
+    if let Some(off) = opts.offset {
+        rows.drain(..off.min(rows.len()));
+    }
     if let Some(n) = opts.limit {
         rows.truncate(n);
     }

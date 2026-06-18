@@ -80,6 +80,9 @@ struct ListArgs {
     /// Maximum number of results to show
     #[arg(long, value_name = "N")]
     limit: Option<usize>,
+    /// Number of results to skip (applied after filtering and sorting)
+    #[arg(long, value_name = "N")]
+    offset: Option<usize>,
 }
 
 impl From<ListArgs> for ListOptions {
@@ -92,6 +95,7 @@ impl From<ListArgs> for ListOptions {
             group_by: a.group_by,
             sort: a.sort,
             limit: a.limit,
+            offset: a.offset,
         }
     }
 }

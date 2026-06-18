@@ -124,13 +124,6 @@ enum IssueLocation {
     Removed(usize),
 }
 
-pub struct FprReport {
-    pub fvdl: Fvdl,
-    pub audit: Option<Audit>,
-    pub tag_names: TagNameMap,
-    issue_index: HashMap<String, IssueLocation>,
-}
-
 pub enum VulnerabilityStatus<'a> {
     Unaudited,
     Removed { issue: &'a RemovedIssue },
@@ -186,6 +179,13 @@ impl<'a> VulnerabilityStatus<'a> {
 pub struct VulnerabilityEntry<'a> {
     pub vulnerability: Vulnerability,
     pub status: VulnerabilityStatus<'a>,
+}
+
+pub struct FprReport {
+    pub fvdl: Fvdl,
+    pub audit: Option<Audit>,
+    pub tag_names: TagNameMap,
+    issue_index: HashMap<String, IssueLocation>,
 }
 
 impl FprReport {

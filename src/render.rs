@@ -223,10 +223,12 @@ pub fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Resu
         return Ok(());
     }
 
+    let start = opts.offset.unwrap_or(0) + 1;
+
     if let Some(group_field) = opts.group_by {
         let groups = list_filter::group(rows, group_field);
 
-        let mut i = 1usize;
+        let mut i = start;
         for (key, group_rows) in &groups {
             println!("Group: {} ({})", key, group_rows.len());
             for row in group_rows {
@@ -241,7 +243,7 @@ pub fn print_list(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Resu
             if i > 0 {
                 println!();
             }
-            print_entry(i + 1, row);
+            print_entry(start + i, row);
         }
     }
 

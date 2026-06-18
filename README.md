@@ -60,7 +60,8 @@ fpr-tools report.fpr list [OPTIONS]
 | `--file <PATTERN>` | Case-insensitive substring match against primary file path |
 | `--group-by <FIELD>` | Group results by: `rule`, `kingdom`, `file`, `status` |
 | `--sort <FIELD>` | Sort by: `severity` (default, descending), `rule`, `file`, `status` |
-| `--limit <N>` | Limit output to N results |
+| `--limit <N>` | Return at most N results |
+| `--offset <N>` | Skip the first N results (applied after filtering and sorting; entry numbers in output reflect the offset) |
 
 Filters are AND-ed together.
 
@@ -69,6 +70,9 @@ Filters are AND-ed together.
 ```sh
 # Top 10 issues
 fpr-tools report.fpr list --limit 10
+
+# Issues 11–20 (second page)
+fpr-tools report.fpr list --offset 10 --limit 10
 
 # High-severity unaudited issues
 fpr-tools report.fpr list --severity ">=4.0" --status unaudited

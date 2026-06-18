@@ -18,7 +18,6 @@ impl SrcArchive {
         let mut entry = fpr.by_index(idx)?;
         let mut xml = Vec::new();
         entry.read_to_end(&mut xml)?;
-        drop(entry);
         Ok(Self {
             index: parse_index(&xml)?,
         })
