@@ -10,7 +10,7 @@ use crate::{
     audit_reader::Audit,
     fpr_report::{FprReport, VulnerabilityStatus, primary_location},
     fvdl_reader::{Fvdl, UnifiedPrimaryNode, decode_entities, strip_html},
-    list_filter::{self, GroupByField, ListOptions, ListRow},
+    list_filter::{self, ListOptions, ListRow},
     src_archive_reader::SrcArchive,
 };
 
@@ -365,16 +365,20 @@ pub fn print_show(
         println!();
         println!("Primary Location");
         match primary_location(analysis) {
-            Some((path, line)) => {
-                println!("  {}:{}", path, line);
+            Some(file_loc) => {
+                println!("  {}:{}", file_loc.path, file_loc.line);
                 if let Some((start, snippet)) = src_archive
                     .as_ref()
-                    .and_then(|a| a.snippet(fpr, path, line, 3))
+                    .and_then(|a| a.snippet(fpr, file_loc.path, file_loc.line, 3))
                 {
                     println!();
                     for (i, src_line) in snippet.iter().enumerate() {
                         let lineno = start + i;
-                        let marker = if lineno == line as usize { '>' } else { ' ' };
+                        let marker = if lineno == file_loc.line as usize {
+                            '>'
+                        } else {
+                            ' '
+                        };
                         println!("  {} {:5} | {}", marker, lineno, src_line);
                     }
                 }
@@ -483,10 +487,27 @@ pub fn print_show(
 }
 
 fn print_entry(i: usize, row: &ListRow) {
+    let instance_id = &row.entry.vulnerability.instance.instance_id;
+    let file = row
+        .file_loc
+        .as_ref()
+        .map(|loc| loc.to_string())
+        .unwrap_or_default();
+
     println!("# {} {}", i, row.status_label);
-    println!("Instance ID: {}", row.instance_id);
-    println!("Type: {}", row.rule_type);
-    println!("File: {}", row.file_loc);
+    println!("Instance ID: {}", instance_id);
+    println!("Kingdom: {}", row.kingdom);
+    println!(
+        "Type: {}{}{}",
+        row.rule_type,
+        if row.rule_subtype.is_empty() {
+            ""
+        } else {
+            ": "
+        },
+        row.rule_subtype
+    );
+    println!("File: {}", file);
 }
 
 fn format_node(node: &UnifiedPrimaryNode) -> Option<(String, Option<&str>)> {

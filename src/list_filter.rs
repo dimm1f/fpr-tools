@@ -1,8 +1,8 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 
 use anyhow::anyhow;
 
-use crate::fpr_report::{VulnerabilityEntry, VulnerabilityStatus, primary_location};
+use crate::fpr_report::{FileLoc, VulnerabilityEntry, VulnerabilityStatus, primary_location};
 
 /// Audit status filter. Valid values: all, unaudited, audited, suppressed, removed.
 #[derive(Clone, Copy)]
@@ -141,15 +141,6 @@ impl SeverityExpr {
     }
 }
 
-pub struct ListRow {
-    pub sev: f32,
-    pub rule_type: String,
-    pub kingdom: String,
-    pub file_loc: String,
-    pub status_label: &'static str,
-    pub instance_id: String,
-}
-
 pub struct ListOptions {
     pub status: StatusFilter,
     pub severity: Option<SeverityExpr>,
@@ -160,7 +151,17 @@ pub struct ListOptions {
     pub limit: Option<usize>,
 }
 
-pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<ListRow> {
+pub struct ListRow<'a> {
+    pub sev: f32,
+    pub rule_type: &'a str,
+    pub rule_subtype: &'a str,
+    pub kingdom: &'a str,
+    pub file_loc: Option<FileLoc<'a>>,
+    pub status_label: &'static str,
+    pub entry: &'a VulnerabilityEntry<'a>,
+}
+
+pub fn apply<'a>(entries: &'a [VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<ListRow<'a>> {
     let rule_lc = opts.rule.as_deref().map(str::to_lowercase);
     let file_lc = opts.file.as_deref().map(str::to_lowercase);
 
@@ -183,29 +184,20 @@ pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<List
             }
 
             let kind = entry.vulnerability.rule.kind.as_deref().unwrap_or("");
-            let typ = entry.vulnerability.rule.typ.as_deref().unwrap_or("");
-            let subtyp = entry.vulnerability.rule.subtyp.as_deref().unwrap_or("");
-            let rule_type = format!(
-                "{}{}{}",
-                typ,
-                if subtyp.is_empty() { "" } else { ": " },
-                subtyp
-            );
+            let rule_type = entry.vulnerability.rule.typ.as_deref().unwrap_or("");
+            let rule_subtype = entry.vulnerability.rule.subtyp.as_deref().unwrap_or("");
 
             if let Some(pat) = &rule_lc {
-                let haystack = format!("{} {} {}", kind, typ, subtyp).to_lowercase();
+                let haystack = format!("{} {} {}", kind, rule_type, rule_subtype).to_lowercase();
                 if !haystack.contains(pat.as_str()) {
                     return None;
                 }
             }
 
-            let file_loc = match primary_location(&entry.vulnerability.analysis) {
-                Some((path, line)) => format!("{}:{}", path, line),
-                None => String::new(),
-            };
+            let file_loc = primary_location(&entry.vulnerability.analysis);
 
-            if let Some(pat) = &file_lc
-                && !file_loc.to_lowercase().contains(pat.as_str())
+            if let (Some(pat), Some(floc)) = (&file_lc, &file_loc)
+                && !floc.path.to_lowercase().contains(pat.as_str())
             {
                 return None;
             }
@@ -213,10 +205,11 @@ pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<List
             Some(ListRow {
                 sev,
                 rule_type,
-                kingdom: kind.to_owned(),
+                rule_subtype,
+                kingdom: kind,
                 file_loc,
                 status_label: entry.status.as_str(),
-                instance_id: entry.vulnerability.instance.instance_id.clone(),
+                entry,
             })
         })
         .collect();
@@ -229,7 +222,9 @@ pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<List
                     .unwrap_or(std::cmp::Ordering::Equal)
             });
         }
-        Some(SortField::Rule) => rows.sort_by(|a, b| a.rule_type.cmp(&b.rule_type)),
+        Some(SortField::Rule) => {
+            rows.sort_by(|a, b| (a.rule_type, a.rule_subtype).cmp(&(b.rule_type, b.rule_subtype)))
+        }
         Some(SortField::File) => rows.sort_by(|a, b| a.file_loc.cmp(&b.file_loc)),
         Some(SortField::Status) => rows.sort_by(|a, b| a.status_label.cmp(b.status_label)),
     }
@@ -242,14 +237,22 @@ pub fn apply(entries: &[VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<List
     rows
 }
 
-pub fn group(rows: Vec<ListRow>, group_by: GroupByField) -> BTreeMap<String, Vec<ListRow>> {
-    let mut groups: BTreeMap<String, Vec<ListRow>> = BTreeMap::new();
+pub fn group<'a>(
+    rows: Vec<ListRow<'a>>,
+    group_by: GroupByField,
+) -> BTreeMap<Cow<'a, str>, Vec<ListRow<'a>>> {
+    let mut groups: BTreeMap<_, Vec<_>> = BTreeMap::new();
     for row in rows {
         let key = match group_by {
-            GroupByField::Rule => row.rule_type.clone(),
-            GroupByField::Kingdom => row.kingdom.clone(),
-            GroupByField::File => row.file_loc.clone(),
-            GroupByField::Status => row.status_label.to_owned(),
+            GroupByField::Rule => Cow::Borrowed(row.rule_type),
+            GroupByField::Kingdom => Cow::Borrowed(row.kingdom),
+            GroupByField::File => Cow::Owned(
+                row.file_loc
+                    .as_ref()
+                    .map(|loc| loc.to_string())
+                    .unwrap_or_default(),
+            ),
+            GroupByField::Status => Cow::Borrowed(row.status_label),
         };
 
         groups.entry(key).or_default().push(row);

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File};
+use std::{collections::HashMap, fmt::Display, fs::File};
 
 use zip::ZipArchive;
 
@@ -10,7 +10,7 @@ use crate::{
 
 /// Returns (path, line) for the primary source location of a vulnerability.
 /// Priority: unified trace default node → structural → runtime → configuration → local.
-pub fn primary_location(analysis: &AnalysisInfo) -> Option<(&str, i32)> {
+pub fn primary_location(analysis: &AnalysisInfo) -> Option<FileLoc<'_>> {
     analysis
         .unified
         .as_ref()
@@ -60,6 +60,19 @@ pub fn primary_location(analysis: &AnalysisInfo) -> Option<(&str, i32)> {
             let sr = analysis.local.as_ref()?.source_ref.as_ref()?;
             sr.path.as_deref().zip(sr.line)
         })
+        .map(|(path, line)| FileLoc { path, line })
+}
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct FileLoc<'a> {
+    pub path: &'a str,
+    pub line: i32,
+}
+
+impl<'a> Display for FileLoc<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.path, self.line)
+    }
 }
 
 pub enum AuditIssue<'a> {
