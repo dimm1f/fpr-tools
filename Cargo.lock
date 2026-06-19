@@ -304,6 +304,7 @@ dependencies = [
  "clap",
  "quick-xml",
  "serde",
+ "serde_json",
  "zip",
 ]
 

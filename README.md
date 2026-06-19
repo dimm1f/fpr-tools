@@ -1,6 +1,6 @@
 # fpr-tools
 
-A command-line tool for inspecting and querying **Fortify Project Report (FPR)** files — the output of Fortify Static Code Analysis (SCA) security scans. It lets you browse, filter, and read vulnerability data without the Fortify UI.
+A command-line tool for inspecting and querying **Fortify Project Report (FPR)** files — the output of Fortify Static Code Analysis (SCA) security scans. It lets you browse, filter, and read vulnerability data without the AWB.
 
 ## Features
 
@@ -9,6 +9,7 @@ A command-line tool for inspecting and querying **Fortify Project Report (FPR)**
 - Group and sort results
 - Inspect individual issues with full trace and source code context
 - Decode rule descriptions and explanations
+- JSON output for all commands
 
 ## Installation
 
@@ -25,6 +26,8 @@ cargo build --release
 fpr-tools <FPR_PATH> <COMMAND> [OPTIONS]
 ```
 
+All commands support `--json` to emit machine-readable output instead of plain text.
+
 ### Commands
 
 #### `info`
@@ -33,6 +36,7 @@ Print scan metadata: project name, scan date, engine version, files scanned, lin
 
 ```sh
 fpr-tools report.fpr info
+fpr-tools report.fpr info --json
 ```
 
 #### `statistics`
@@ -41,7 +45,8 @@ Show issue counts by audit status (audited, unaudited, suppressed, removed).
 
 ```sh
 fpr-tools report.fpr statistics
-fpr-tools report.fpr statistics --tags   # also break down by tag
+fpr-tools report.fpr statistics --tags    # also break down by tag
+fpr-tools report.fpr statistics --json   # always includes tag breakdown
 ```
 
 #### `list`
@@ -62,6 +67,7 @@ fpr-tools report.fpr list [OPTIONS]
 | `--sort <FIELD>` | Sort by: `severity` (default, descending), `rule`, `file`, `status` |
 | `--limit <N>` | Return at most N results |
 | `--offset <N>` | Skip the first N results (applied after filtering and sorting; entry numbers in output reflect the offset) |
+| `--json` | Output as JSON array |
 
 Filters are AND-ed together.
 
@@ -79,6 +85,9 @@ fpr-tools report.fpr list --severity ">=4.0" --status unaudited
 
 # SQL-related issues in Java files, grouped by rule
 fpr-tools report.fpr list --rule "sql" --file ".java" --group-by rule
+
+# Machine-readable output
+fpr-tools report.fpr list --json
 ```
 
 #### `show`
@@ -97,6 +106,7 @@ fpr-tools report.fpr show <INSTANCE_ID> [OPTIONS]
 | `--tags` | Print audit tags and their values |
 | `--comments` | Print audit comments (threaded comments from reviewers) |
 | `--history` | Print audit trail (tag changes, suppression, removal history) |
+| `--json` | Output as JSON |
 
 Output includes: rule info, severity and confidence, primary source location, audit status, code trace, and optionally tags, comments, history, rule explanation, and source snippet.
 
@@ -104,15 +114,7 @@ Output includes: rule info, severity and confidence, primary source location, au
 
 ```sh
 fpr-tools report.fpr show 65AD6342C39D043E7705A45CE1066B36
-fpr-tools report.fpr show 65AD63 --all                                # all optional sections
+fpr-tools report.fpr show 65AD63 --all                                          # all optional sections
 fpr-tools report.fpr show 65AD63 --explain --code --tags --comments --history   # prefix matching
+fpr-tools report.fpr show 65AD63 --json
 ```
-
-## FPR File Format
-
-An FPR file is a ZIP archive produced by Fortify SCA. It contains:
-
-- `audit.fvdl` — vulnerability definitions and scan data (FVDL XML)
-- `audit.xml` — audit decisions (statuses, tags, comments)
-- `filtertemplate.xml` — tag name definitions
-- `src-archive/` — source files referenced by the scan (needed for `--code`)

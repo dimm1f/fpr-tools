@@ -13,6 +13,8 @@ use clap::{Parser, Subcommand};
 use list_filter::{GroupByField, ListOptions, SeverityExpr, SortField, StatusFilter};
 use zip::ZipArchive;
 
+use crate::render::show::ShowOptions;
+
 #[derive(Parser)]
 struct Args {
     /// Path to FPR file
@@ -24,37 +26,23 @@ struct Args {
 #[derive(Subcommand)]
 enum Command {
     /// Print scan metadata: project, build, engine version, rule packs, issue count
-    Info,
+    Info {
+        /// Output results as JSON
+        #[arg(long, default_value_t = false)]
+        json: bool,
+    },
     /// Print issue counts by audit status, with optional per-tag breakdown
     Statistics {
         #[arg(long, default_value_t = false)]
         tags: bool,
+        /// Output results as JSON
+        #[arg(long, default_value_t = false)]
+        json: bool,
     },
     /// List vulnerabilities with optional filtering and grouping
     List(ListArgs),
     /// Show full details for one vulnerability by instance ID (or unambiguous prefix)
-    Show {
-        #[arg(num_args = 1..)]
-        instance_ids: Vec<String>,
-        /// Enable all optional output sections
-        #[arg(long, default_value_t = false)]
-        all: bool,
-        /// Print rule description and explanation
-        #[arg(long, default_value_t = false)]
-        explain: bool,
-        /// Print source code snippet around the primary location
-        #[arg(long, default_value_t = false)]
-        code: bool,
-        /// Print tags and their values for the vulnerability
-        #[arg(long, default_value_t = false)]
-        tags: bool,
-        /// Print audit comments for the vulnerability
-        #[arg(long, default_value_t = false)]
-        comments: bool,
-        /// Print audit trail (tag changes, suppression, removal history)
-        #[arg(long, default_value_t = false)]
-        history: bool,
-    },
+    Show(ShowArgs),
 }
 
 #[derive(clap::Args)]
@@ -83,6 +71,9 @@ struct ListArgs {
     /// Number of results to skip (applied after filtering and sorting)
     #[arg(long, value_name = "N")]
     offset: Option<usize>,
+    /// Output results as JSON
+    #[arg(long, default_value_t = false)]
+    json: bool,
 }
 
 impl From<ListArgs> for ListOptions {
@@ -100,6 +91,33 @@ impl From<ListArgs> for ListOptions {
     }
 }
 
+#[derive(clap::Args)]
+struct ShowArgs {
+    #[arg(num_args = 1..)]
+    instance_ids: Vec<String>,
+    /// Enable all optional output sections
+    #[arg(long, default_value_t = false)]
+    all: bool,
+    /// Print rule description and explanation
+    #[arg(long, default_value_t = false)]
+    explain: bool,
+    /// Print source code snippet around the primary location
+    #[arg(long, default_value_t = false)]
+    code: bool,
+    /// Print tags and their values for the vulnerability
+    #[arg(long, default_value_t = false)]
+    tags: bool,
+    /// Print audit comments for the vulnerability
+    #[arg(long, default_value_t = false)]
+    comments: bool,
+    /// Print audit trail (tag changes, suppression, removal history)
+    #[arg(long, default_value_t = false)]
+    history: bool,
+    /// Output results as JSON
+    #[arg(long, default_value_t = false)]
+    json: bool,
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
@@ -107,25 +125,47 @@ fn main() -> anyhow::Result<()> {
     let mut fpr = ZipArchive::new(fpr)?;
 
     match args.command {
-        Command::Info => render::print_fpr_info(&mut fpr),
-        Command::Statistics { tags: show_tags } => render::print_statistics(&mut fpr, show_tags),
-        Command::List(args) => render::print_list(&mut fpr, args.into()),
-        Command::Show {
-            instance_ids,
-            all,
-            explain,
-            code: show_code,
+        Command::Info { json } => {
+            if json {
+                render::info::json(&mut fpr)
+            } else {
+                render::info::text(&mut fpr)
+            }
+        }
+        Command::Statistics {
             tags: show_tags,
-            comments: show_comments,
-            history: show_history,
-        } => render::print_show(
-            &mut fpr,
-            &instance_ids,
-            all || explain,
-            all || show_code,
-            all || show_tags,
-            all || show_comments,
-            all || show_history,
-        ),
+            json,
+        } => {
+            if json {
+                render::statistics::json(&mut fpr)
+            } else {
+                render::statistics::text(&mut fpr, show_tags)
+            }
+        }
+        Command::List(args) => {
+            let json = args.json;
+            let opts: ListOptions = args.into();
+            if json {
+                render::list::json(&mut fpr, opts)
+            } else {
+                render::list::text(&mut fpr, opts)
+            }
+        }
+        Command::Show(args) => {
+            let json = args.json;
+            let opts = ShowOptions {
+                explain: args.all || args.explain,
+                show_code: args.all || args.code,
+                show_tags: args.all || args.tags,
+                show_comments: args.all || args.comments,
+                show_history: args.all || args.history,
+            };
+            let ids: Vec<&str> = args.instance_ids.iter().map(String::as_str).collect();
+            if json {
+                render::show::json(&mut fpr, &ids, &opts)
+            } else {
+                render::show::text(&mut fpr, &ids, &opts)
+            }
+        }
     }
 }

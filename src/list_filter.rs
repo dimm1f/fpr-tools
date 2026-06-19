@@ -232,7 +232,7 @@ pub fn apply<'a>(entries: &'a [VulnerabilityEntry<'_>], opts: &ListOptions) -> V
 
     // offset and truncate after sort so --limit/--offset always operate on the chosen sort field
     if let Some(off) = opts.offset {
-        rows.drain(..off.min(rows.len()));
+        rows = rows.split_off(off.min(rows.len()));
     }
     if let Some(n) = opts.limit {
         rows.truncate(n);
