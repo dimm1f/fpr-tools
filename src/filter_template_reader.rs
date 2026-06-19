@@ -48,6 +48,9 @@ impl TagNameMap {
     fn resolve_embeded(guid: &str) -> Option<&str> {
         match guid {
             "22222222-2222-2222-2222-222222222222" => Some("suppressed"),
+            "87f2364f-dcd4-49e6-861d-f8d3f351686b" => Some("Analysis"),
+            "ff93a467-272b-445f-84be-9cb78c75cae8" => Some("Status"),
+            "4a9bcce5-1769-46cf-bc98-c4799655bc37" => Some("Impact"),
             _ => None,
         }
     }
