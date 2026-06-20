@@ -268,3 +268,95 @@ impl FprReport {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fvdl_reader::{AnalysisInfo, Runtime, SourceLocation, Structural};
+
+    fn loc(path: &str, line: i32) -> SourceLocation {
+        SourceLocation {
+            path: Some(path.to_owned()),
+            line: Some(line),
+            line_end: None,
+            col_start: None,
+            col_end: None,
+            context_id: None,
+            snippet: None,
+        }
+    }
+
+    fn empty_analysis() -> AnalysisInfo {
+        AnalysisInfo {
+            unified: None,
+            dataflow_id: None,
+            local: None,
+            stateful_primary: None,
+            structural: None,
+            configuration: vec![],
+            runtime: None,
+        }
+    }
+
+    #[test]
+    fn file_loc_display() {
+        assert_eq!(FileLoc { path: "src/Foo.java", line: 42 }.to_string(), "src/Foo.java:42");
+    }
+
+    #[test]
+    fn primary_location_structural_fallback() {
+        let mut analysis = empty_analysis();
+        analysis.structural = Some(Structural {
+            source_location: Some(loc("src/Bar.java", 10)),
+            context_id: None,
+            structural_matches: vec![],
+        });
+        let result = primary_location(&analysis).unwrap();
+        assert_eq!(result.path, "src/Bar.java");
+        assert_eq!(result.line, 10);
+    }
+
+    #[test]
+    fn primary_location_runtime_fallback() {
+        let mut analysis = empty_analysis();
+        analysis.runtime = Some(Runtime {
+            context_id: None,
+            primary_location: Some(loc("src/Baz.java", 5)),
+            replacement_definitions: None,
+        });
+        let result = primary_location(&analysis).unwrap();
+        assert_eq!(result.path, "src/Baz.java");
+        assert_eq!(result.line, 5);
+    }
+
+    #[test]
+    fn primary_location_configuration_fallback() {
+        let mut analysis = empty_analysis();
+        analysis.configuration = vec![loc("config/app.properties", 3)];
+        let result = primary_location(&analysis).unwrap();
+        assert_eq!(result.path, "config/app.properties");
+        assert_eq!(result.line, 3);
+    }
+
+    #[test]
+    fn primary_location_all_none_returns_none() {
+        assert!(primary_location(&empty_analysis()).is_none());
+    }
+
+    #[test]
+    fn primary_location_structural_preferred_over_runtime() {
+        let mut analysis = empty_analysis();
+        analysis.structural = Some(Structural {
+            source_location: Some(loc("structural.java", 1)),
+            context_id: None,
+            structural_matches: vec![],
+        });
+        analysis.runtime = Some(Runtime {
+            context_id: None,
+            primary_location: Some(loc("runtime.java", 2)),
+            replacement_definitions: None,
+        });
+        let result = primary_location(&analysis).unwrap();
+        assert_eq!(result.path, "structural.java");
+    }
+}

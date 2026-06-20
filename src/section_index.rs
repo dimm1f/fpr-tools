@@ -63,3 +63,41 @@ impl SectionIndex {
         self.sections.get(tag).map(Vec::as_slice).unwrap_or(&[])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn first_returns_slice_containing_element_content() {
+        let xml = b"<Root><Alpha>hello</Alpha><Beta>world</Beta></Root>";
+        let idx = SectionIndex::build(xml).unwrap();
+        let (s, e) = idx.first("Alpha").unwrap();
+        let slice = std::str::from_utf8(&xml[s..e]).unwrap();
+        assert!(slice.contains("hello"));
+        assert!(!slice.contains("world"));
+    }
+
+    #[test]
+    fn all_returns_all_occurrences() {
+        let xml = b"<Root><Foo>a</Foo><Bar>x</Bar><Foo>b</Foo></Root>";
+        let idx = SectionIndex::build(xml).unwrap();
+        assert_eq!(idx.all("Foo").len(), 2);
+        assert_eq!(idx.all("Bar").len(), 1);
+    }
+
+    #[test]
+    fn absent_tag_returns_none_and_empty() {
+        let xml = b"<Root><Foo>hello</Foo></Root>";
+        let idx = SectionIndex::build(xml).unwrap();
+        assert!(idx.first("Missing").is_none());
+        assert!(idx.all("Missing").is_empty());
+    }
+
+    #[test]
+    fn self_closing_tag_is_indexed() {
+        let xml = b"<Root><Empty/></Root>";
+        let idx = SectionIndex::build(xml).unwrap();
+        assert!(idx.first("Empty").is_some());
+    }
+}

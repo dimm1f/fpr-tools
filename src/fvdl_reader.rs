@@ -1117,3 +1117,79 @@ impl Fvdl {
         )?))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_html_removes_tags() {
+        assert_eq!(strip_html("<b>bold</b>"), "bold");
+        assert_eq!(strip_html("no tags"), "no tags");
+        assert_eq!(strip_html(r#"<a href="x">link</a>"#), "link");
+        assert_eq!(strip_html("<br/>"), "");
+        assert_eq!(strip_html(""), "");
+    }
+
+    #[test]
+    fn decode_entities_named() {
+        assert_eq!(decode_entities("&amp;"), "&");
+        assert_eq!(decode_entities("&lt;"), "<");
+        assert_eq!(decode_entities("&gt;"), ">");
+        assert_eq!(decode_entities("&quot;"), "\"");
+        assert_eq!(decode_entities("&apos;"), "'");
+        assert_eq!(decode_entities("&#39;"), "'");
+        assert_eq!(decode_entities("&nbsp;"), " ");
+    }
+
+    #[test]
+    fn decode_entities_unknown_passthrough() {
+        assert_eq!(decode_entities("&foo;"), "&foo;");
+    }
+
+    #[test]
+    fn decode_entities_no_entities() {
+        assert_eq!(decode_entities("hello world"), "hello world");
+    }
+
+    #[test]
+    fn decode_entities_mixed() {
+        assert_eq!(decode_entities("a &lt; b &amp;&amp; c &gt; d"), "a < b && c > d");
+    }
+
+    #[test]
+    fn attr_value_extracts_quoted_value() {
+        assert_eq!(attr_value(r#"<Replace key="foo"/>"#, "key"), Some("foo"));
+        assert_eq!(attr_value(r#"<tag name="bar" value="baz"/>"#, "value"), Some("baz"));
+    }
+
+    #[test]
+    fn attr_value_missing_returns_none() {
+        assert_eq!(attr_value("<Replace/>", "key"), None);
+    }
+
+    #[test]
+    fn replacement_definitions_substitutes_known_key() {
+        let rd = ReplacementDefinitions {
+            defs: vec![Def {
+                key: "name".to_owned(),
+                value: "Alice".to_owned(),
+                source_location: None,
+            }],
+            location_defs: vec![],
+        };
+        assert_eq!(rd.apply(r#"Hello <Replace key="name"/>!"#), "Hello Alice!");
+    }
+
+    #[test]
+    fn replacement_definitions_unknown_key_falls_back_to_key() {
+        let rd = ReplacementDefinitions { defs: vec![], location_defs: vec![] };
+        assert_eq!(rd.apply(r#"<Replace key="x"/>"#), "x");
+    }
+
+    #[test]
+    fn replacement_definitions_no_placeholders() {
+        let rd = ReplacementDefinitions { defs: vec![], location_defs: vec![] };
+        assert_eq!(rd.apply("plain text"), "plain text");
+    }
+}

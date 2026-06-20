@@ -263,3 +263,84 @@ pub fn group<'a>(
     }
     groups
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn severity_expr_bare_number_implies_gte() {
+        let expr: SeverityExpr = "3.0".parse().unwrap();
+        assert!(expr.matches(3.0));
+        assert!(expr.matches(5.0));
+        assert!(!expr.matches(2.9));
+    }
+
+    #[test]
+    fn severity_expr_gt() {
+        let expr: SeverityExpr = ">3.0".parse().unwrap();
+        assert!(expr.matches(3.1));
+        assert!(!expr.matches(3.0));
+    }
+
+    #[test]
+    fn severity_expr_lt() {
+        let expr: SeverityExpr = "<3.0".parse().unwrap();
+        assert!(expr.matches(2.9));
+        assert!(!expr.matches(3.0));
+    }
+
+    #[test]
+    fn severity_expr_lte() {
+        let expr: SeverityExpr = "<=5.0".parse().unwrap();
+        assert!(expr.matches(5.0));
+        assert!(expr.matches(4.9));
+        assert!(!expr.matches(5.1));
+    }
+
+    #[test]
+    fn severity_expr_eq() {
+        let expr: SeverityExpr = "=4.0".parse().unwrap();
+        assert!(expr.matches(4.0));
+        assert!(!expr.matches(4.1));
+    }
+
+    #[test]
+    fn severity_expr_invalid_returns_err() {
+        assert!("abc".parse::<SeverityExpr>().is_err());
+        assert!(">abc".parse::<SeverityExpr>().is_err());
+    }
+
+    #[test]
+    fn status_filter_parses_all_variants() {
+        assert!(matches!("all".parse::<StatusFilter>().unwrap(), StatusFilter::All));
+        assert!(matches!("unaudited".parse::<StatusFilter>().unwrap(), StatusFilter::Unaudited));
+        assert!(matches!("audited".parse::<StatusFilter>().unwrap(), StatusFilter::Audited));
+        assert!(matches!("suppressed".parse::<StatusFilter>().unwrap(), StatusFilter::Suppressed));
+        assert!(matches!("removed".parse::<StatusFilter>().unwrap(), StatusFilter::Removed));
+    }
+
+    #[test]
+    fn status_filter_unknown_returns_err() {
+        assert!("unknown".parse::<StatusFilter>().is_err());
+        assert!("All".parse::<StatusFilter>().is_err());
+    }
+
+    #[test]
+    fn group_by_field_parses_all_variants() {
+        assert!(matches!("rule".parse::<GroupByField>().unwrap(), GroupByField::Rule));
+        assert!(matches!("kingdom".parse::<GroupByField>().unwrap(), GroupByField::Kingdom));
+        assert!(matches!("file".parse::<GroupByField>().unwrap(), GroupByField::File));
+        assert!(matches!("status".parse::<GroupByField>().unwrap(), GroupByField::Status));
+        assert!("bad".parse::<GroupByField>().is_err());
+    }
+
+    #[test]
+    fn sort_field_parses_all_variants() {
+        assert!(matches!("severity".parse::<SortField>().unwrap(), SortField::Severity));
+        assert!(matches!("rule".parse::<SortField>().unwrap(), SortField::Rule));
+        assert!(matches!("file".parse::<SortField>().unwrap(), SortField::File));
+        assert!(matches!("status".parse::<SortField>().unwrap(), SortField::Status));
+        assert!("bad".parse::<SortField>().is_err());
+    }
+}
