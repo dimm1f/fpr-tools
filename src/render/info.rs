@@ -180,7 +180,7 @@ pub fn json(fpr: &mut ZipArchive<File>) -> anyhow::Result<()> {
                 .unwrap_or_default();
             let inactive: i64 = engine.inactive_results.iter().filter_map(|g| g.count).sum();
             let mi = engine.machine_info.as_ref();
-            
+
             (
                 engine.engine_version,
                 mi.and_then(|m| m.hostname.clone()),

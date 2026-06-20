@@ -1154,13 +1154,19 @@ mod tests {
 
     #[test]
     fn decode_entities_mixed() {
-        assert_eq!(decode_entities("a &lt; b &amp;&amp; c &gt; d"), "a < b && c > d");
+        assert_eq!(
+            decode_entities("a &lt; b &amp;&amp; c &gt; d"),
+            "a < b && c > d"
+        );
     }
 
     #[test]
     fn attr_value_extracts_quoted_value() {
         assert_eq!(attr_value(r#"<Replace key="foo"/>"#, "key"), Some("foo"));
-        assert_eq!(attr_value(r#"<tag name="bar" value="baz"/>"#, "value"), Some("baz"));
+        assert_eq!(
+            attr_value(r#"<tag name="bar" value="baz"/>"#, "value"),
+            Some("baz")
+        );
     }
 
     #[test]
@@ -1183,13 +1189,19 @@ mod tests {
 
     #[test]
     fn replacement_definitions_unknown_key_falls_back_to_key() {
-        let rd = ReplacementDefinitions { defs: vec![], location_defs: vec![] };
+        let rd = ReplacementDefinitions {
+            defs: vec![],
+            location_defs: vec![],
+        };
         assert_eq!(rd.apply(r#"<Replace key="x"/>"#), "x");
     }
 
     #[test]
     fn replacement_definitions_no_placeholders() {
-        let rd = ReplacementDefinitions { defs: vec![], location_defs: vec![] };
+        let rd = ReplacementDefinitions {
+            defs: vec![],
+            location_defs: vec![],
+        };
         assert_eq!(rd.apply("plain text"), "plain text");
     }
 }

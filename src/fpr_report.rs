@@ -300,7 +300,14 @@ mod tests {
 
     #[test]
     fn file_loc_display() {
-        assert_eq!(FileLoc { path: "src/Foo.java", line: 42 }.to_string(), "src/Foo.java:42");
+        assert_eq!(
+            FileLoc {
+                path: "src/Foo.java",
+                line: 42
+            }
+            .to_string(),
+            "src/Foo.java:42"
+        );
     }
 
     #[test]

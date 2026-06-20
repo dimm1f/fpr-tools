@@ -313,11 +313,26 @@ mod tests {
 
     #[test]
     fn status_filter_parses_all_variants() {
-        assert!(matches!("all".parse::<StatusFilter>().unwrap(), StatusFilter::All));
-        assert!(matches!("unaudited".parse::<StatusFilter>().unwrap(), StatusFilter::Unaudited));
-        assert!(matches!("audited".parse::<StatusFilter>().unwrap(), StatusFilter::Audited));
-        assert!(matches!("suppressed".parse::<StatusFilter>().unwrap(), StatusFilter::Suppressed));
-        assert!(matches!("removed".parse::<StatusFilter>().unwrap(), StatusFilter::Removed));
+        assert!(matches!(
+            "all".parse::<StatusFilter>().unwrap(),
+            StatusFilter::All
+        ));
+        assert!(matches!(
+            "unaudited".parse::<StatusFilter>().unwrap(),
+            StatusFilter::Unaudited
+        ));
+        assert!(matches!(
+            "audited".parse::<StatusFilter>().unwrap(),
+            StatusFilter::Audited
+        ));
+        assert!(matches!(
+            "suppressed".parse::<StatusFilter>().unwrap(),
+            StatusFilter::Suppressed
+        ));
+        assert!(matches!(
+            "removed".parse::<StatusFilter>().unwrap(),
+            StatusFilter::Removed
+        ));
     }
 
     #[test]
@@ -328,19 +343,43 @@ mod tests {
 
     #[test]
     fn group_by_field_parses_all_variants() {
-        assert!(matches!("rule".parse::<GroupByField>().unwrap(), GroupByField::Rule));
-        assert!(matches!("kingdom".parse::<GroupByField>().unwrap(), GroupByField::Kingdom));
-        assert!(matches!("file".parse::<GroupByField>().unwrap(), GroupByField::File));
-        assert!(matches!("status".parse::<GroupByField>().unwrap(), GroupByField::Status));
+        assert!(matches!(
+            "rule".parse::<GroupByField>().unwrap(),
+            GroupByField::Rule
+        ));
+        assert!(matches!(
+            "kingdom".parse::<GroupByField>().unwrap(),
+            GroupByField::Kingdom
+        ));
+        assert!(matches!(
+            "file".parse::<GroupByField>().unwrap(),
+            GroupByField::File
+        ));
+        assert!(matches!(
+            "status".parse::<GroupByField>().unwrap(),
+            GroupByField::Status
+        ));
         assert!("bad".parse::<GroupByField>().is_err());
     }
 
     #[test]
     fn sort_field_parses_all_variants() {
-        assert!(matches!("severity".parse::<SortField>().unwrap(), SortField::Severity));
-        assert!(matches!("rule".parse::<SortField>().unwrap(), SortField::Rule));
-        assert!(matches!("file".parse::<SortField>().unwrap(), SortField::File));
-        assert!(matches!("status".parse::<SortField>().unwrap(), SortField::Status));
+        assert!(matches!(
+            "severity".parse::<SortField>().unwrap(),
+            SortField::Severity
+        ));
+        assert!(matches!(
+            "rule".parse::<SortField>().unwrap(),
+            SortField::Rule
+        ));
+        assert!(matches!(
+            "file".parse::<SortField>().unwrap(),
+            SortField::File
+        ));
+        assert!(matches!(
+            "status".parse::<SortField>().unwrap(),
+            SortField::Status
+        ));
         assert!("bad".parse::<SortField>().is_err());
     }
 }

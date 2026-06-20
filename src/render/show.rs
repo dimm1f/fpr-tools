@@ -278,19 +278,20 @@ pub fn json(fpr: &mut ZipArchive<File>, ids: &[&str], opts: &ShowOptions) -> any
 
         let source_code: Option<Vec<serde_json::Value>> =
             if let (Some(arc), Some(loc)) = (&src_archive, &primary_loc) {
-                arc.snippet(fpr, loc.path, loc.line, 3).map(|(start, lines)| {
-                    lines
-                        .iter()
-                        .enumerate()
-                        .map(|(j, line)| {
-                            serde_json::json!({
-                                "line": start + j,
-                                "content": line,
-                                "primary": start + j == loc.line as usize,
+                arc.snippet(fpr, loc.path, loc.line, 3)
+                    .map(|(start, lines)| {
+                        lines
+                            .iter()
+                            .enumerate()
+                            .map(|(j, line)| {
+                                serde_json::json!({
+                                    "line": start + j,
+                                    "content": line,
+                                    "primary": start + j == loc.line as usize,
+                                })
                             })
-                        })
-                        .collect()
-                })
+                            .collect()
+                    })
             } else {
                 None
             };
