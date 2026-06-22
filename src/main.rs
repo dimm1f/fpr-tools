@@ -74,6 +74,9 @@ struct ListArgs {
     /// Output results as JSON
     #[arg(long, default_value_t = false)]
     json: bool,
+    /// Include all fields in JSON output (same detail level as show command)
+    #[arg(long, default_value_t = false)]
+    all_fields: bool,
 }
 
 impl From<ListArgs> for ListOptions {
@@ -113,9 +116,6 @@ struct ShowArgs {
     /// Print audit trail (tag changes, suppression, removal history)
     #[arg(long, default_value_t = false)]
     history: bool,
-    /// Output results as JSON
-    #[arg(long, default_value_t = false)]
-    json: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -144,15 +144,15 @@ fn main() -> anyhow::Result<()> {
         }
         Command::List(args) => {
             let json = args.json;
+            let all_fields = args.all_fields;
             let opts: ListOptions = args.into();
             if json {
-                render::list::json(&mut fpr, opts)
+                render::list::json(&mut fpr, opts, all_fields)
             } else {
                 render::list::text(&mut fpr, opts)
             }
         }
         Command::Show(args) => {
-            let json = args.json;
             let opts = ShowOptions {
                 explain: args.all || args.explain,
                 show_code: args.all || args.code,
@@ -161,11 +161,7 @@ fn main() -> anyhow::Result<()> {
                 show_history: args.all || args.history,
             };
             let ids: Vec<&str> = args.instance_ids.iter().map(String::as_str).collect();
-            if json {
-                render::show::json(&mut fpr, &ids, &opts)
-            } else {
-                render::show::text(&mut fpr, &ids, &opts)
-            }
+            render::show::text(&mut fpr, &ids, &opts)
         }
     }
 }

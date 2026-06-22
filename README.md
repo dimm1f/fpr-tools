@@ -26,8 +26,6 @@ cargo build --release
 fpr-tools <FPR_PATH> <COMMAND> [OPTIONS]
 ```
 
-All commands support `--json` to emit machine-readable output instead of plain text.
-
 ### Commands
 
 #### `info`
@@ -67,7 +65,8 @@ fpr-tools report.fpr list [OPTIONS]
 | `--sort <FIELD>` | Sort by: `severity` (default, descending), `rule`, `file`, `status` |
 | `--limit <N>` | Return at most N results |
 | `--offset <N>` | Skip the first N results (applied after filtering and sorting; entry numbers in output reflect the offset) |
-| `--json` | Output as JSON array |
+| `--json` | Output as JSON array (minimal fields) |
+| `--all-fields` | With `--json`: include all fields for each issue (trace, tags, comments, history, descriptions, source snippet) |
 
 Filters are AND-ed together.
 
@@ -86,8 +85,14 @@ fpr-tools report.fpr list --severity ">=4.0" --status unaudited
 # SQL-related issues in Java files, grouped by rule
 fpr-tools report.fpr list --rule "sql" --file ".java" --group-by rule
 
-# Machine-readable output
+# Minimal JSON output
 fpr-tools report.fpr list --json
+
+# Full detail JSON (same fields as show output)
+fpr-tools report.fpr list --json --all-fields
+
+# Full detail JSON for high-severity unaudited issues
+fpr-tools report.fpr list --severity ">=4.0" --status unaudited --json --all-fields
 ```
 
 #### `show`
@@ -106,7 +111,6 @@ fpr-tools report.fpr show <INSTANCE_ID> [OPTIONS]
 | `--tags` | Print audit tags and their values |
 | `--comments` | Print audit comments (threaded comments from reviewers) |
 | `--history` | Print audit trail (tag changes, suppression, removal history) |
-| `--json` | Output as JSON |
 
 Output includes: rule info, severity and confidence, primary source location, audit status, code trace, and optionally tags, comments, history, rule explanation, and source snippet.
 
@@ -114,7 +118,6 @@ Output includes: rule info, severity and confidence, primary source location, au
 
 ```sh
 fpr-tools report.fpr show 65AD6342C39D043E7705A45CE1066B36
-fpr-tools report.fpr show 65AD63 --all                                          # all optional sections
-fpr-tools report.fpr show 65AD63 --explain --code --tags --comments --history   # prefix matching
-fpr-tools report.fpr show 65AD63 --json
+fpr-tools report.fpr show 65AD63 --all                                        # all optional sections
+fpr-tools report.fpr show 65AD63 --explain --code --tags --comments --history # prefix matching
 ```
