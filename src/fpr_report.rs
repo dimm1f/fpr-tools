@@ -25,7 +25,7 @@ pub fn primary_location(analysis: &AnalysisInfo) -> Option<FileLoc<'_>> {
                 let Some(pair) = node
                     .source_location
                     .as_ref()
-                    .and_then(|loc| loc.path.as_deref().zip(loc.line))
+                    .and_then(|loc| loc.path_line())
                 else {
                     continue;
                 };
@@ -39,27 +39,21 @@ pub fn primary_location(analysis: &AnalysisInfo) -> Option<FileLoc<'_>> {
         .or_else(|| {
             analysis
                 .structural
-                .as_ref()
-                .and_then(|s| s.source_location.as_ref())
-                .and_then(|loc| loc.path.as_deref().zip(loc.line))
+                .as_ref()?
+                .source_location
+                .as_ref()?
+                .path_line()
         })
         .or_else(|| {
             analysis
                 .runtime
-                .as_ref()
-                .and_then(|r| r.primary_location.as_ref())
-                .and_then(|loc| loc.path.as_deref().zip(loc.line))
+                .as_ref()?
+                .primary_location
+                .as_ref()?
+                .path_line()
         })
-        .or_else(|| {
-            analysis
-                .configuration
-                .first()
-                .and_then(|loc| loc.path.as_deref().zip(loc.line))
-        })
-        .or_else(|| {
-            let sr = analysis.local.as_ref()?.source_ref.as_ref()?;
-            sr.path.as_deref().zip(sr.line)
-        })
+        .or_else(|| analysis.configuration.first()?.path_line())
+        .or_else(|| analysis.local.as_ref()?.source_ref.as_ref()?.path_line())
         .map(|(path, line)| FileLoc { path, line })
 }
 
@@ -80,41 +74,33 @@ pub enum AuditIssue<'a> {
     Custom(&'a CustomIssue),
 }
 
+macro_rules! delegate {
+    ($self:expr, $field:ident) => {
+        match $self {
+            AuditIssue::Standard(i) => &i.$field,
+            AuditIssue::Custom(i) => &i.$field,
+        }
+    };
+}
+
 impl<'a> AuditIssue<'a> {
     pub fn is_suppressed(&self) -> bool {
-        match self {
-            AuditIssue::Standard(i) => i.suppressed.unwrap_or(false),
-            AuditIssue::Custom(i) => i.suppressed.unwrap_or(false),
-        }
+        delegate!(self, suppressed).unwrap_or(false)
     }
 
     pub fn tags(&self) -> &[Tag] {
-        match self {
-            AuditIssue::Standard(i) => &i.tags,
-            AuditIssue::Custom(i) => &i.tags,
-        }
+        delegate!(self, tags)
     }
 
     pub fn comments(&self) -> &[Comment] {
-        match self {
-            AuditIssue::Standard(i) => &i.threaded_comments,
-            AuditIssue::Custom(i) => &i.threaded_comments,
-        }
+        delegate!(self, threaded_comments)
     }
 
     pub fn audit_trail(&self) -> Vec<&TagHistory> {
-        match self {
-            AuditIssue::Standard(i) => i
-                .manager_audit_trail
-                .iter()
-                .chain(i.client_audit_trail.iter())
-                .collect(),
-            AuditIssue::Custom(i) => i
-                .manager_audit_trail
-                .iter()
-                .chain(i.client_audit_trail.iter())
-                .collect(),
-        }
+        delegate!(self, manager_audit_trail)
+            .iter()
+            .chain(delegate!(self, client_audit_trail).iter())
+            .collect()
     }
 }
 
@@ -231,7 +217,17 @@ impl FprReport {
     }
 
     pub fn vulnerabilities(&self) -> anyhow::Result<Vec<VulnerabilityEntry<'_>>> {
-        let vulns = self.fvdl.vulnerabilities()?;
+        self.vulnerabilities_filtered(|_| true)
+    }
+
+    pub fn vulnerabilities_filtered<F>(
+        &self,
+        predicate: F,
+    ) -> anyhow::Result<Vec<VulnerabilityEntry<'_>>>
+    where
+        F: FnMut(&Vulnerability) -> bool,
+    {
+        let vulns = self.fvdl.vulnerabilities_filtered(predicate)?;
         Ok(vulns
             .into_iter()
             .map(|v| {

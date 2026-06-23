@@ -2,7 +2,21 @@ use std::{borrow::Cow, collections::BTreeMap, str::FromStr};
 
 use anyhow::anyhow;
 
-use crate::fpr_report::{FileLoc, VulnerabilityEntry, VulnerabilityStatus, primary_location};
+macro_rules! unknown_variant {
+    ($s:expr, $name:literal, $variants:literal) => {
+        Err(anyhow!(
+            "unknown {} '{}', expected one of: {}",
+            $name,
+            $s,
+            $variants
+        ))
+    };
+}
+
+use crate::{
+    fpr_report::{FileLoc, VulnerabilityEntry, VulnerabilityStatus, primary_location},
+    fvdl_reader::Vulnerability,
+};
 
 /// Audit status filter. Valid values: all, unaudited, audited, suppressed, removed.
 #[derive(Clone, Copy)]
@@ -35,9 +49,7 @@ impl FromStr for StatusFilter {
             "audited" => Ok(StatusFilter::Audited),
             "suppressed" => Ok(StatusFilter::Suppressed),
             "removed" => Ok(StatusFilter::Removed),
-            _ => Err(anyhow!(
-                "unknown status '{s}', expected one of: all, unaudited, audited, suppressed, removed"
-            )),
+            _ => unknown_variant!(s, "status", "all, unaudited, audited, suppressed, removed"),
         }
     }
 }
@@ -59,9 +71,7 @@ impl FromStr for GroupByField {
             "kingdom" => Ok(GroupByField::Kingdom),
             "file" => Ok(GroupByField::File),
             "status" => Ok(GroupByField::Status),
-            _ => Err(anyhow!(
-                "unknown group-by field '{s}', expected one of: rule, kingdom, file, status"
-            )),
+            _ => unknown_variant!(s, "group-by field", "rule, kingdom, file, status"),
         }
     }
 }
@@ -83,9 +93,7 @@ impl FromStr for SortField {
             "rule" => Ok(SortField::Rule),
             "file" => Ok(SortField::File),
             "status" => Ok(SortField::Status),
-            _ => Err(anyhow!(
-                "unknown sort field '{s}', expected one of: severity, rule, file, status"
-            )),
+            _ => unknown_variant!(s, "sort field", "severity, rule, file, status"),
         }
     }
 }
@@ -152,6 +160,46 @@ pub struct ListOptions {
     pub offset: Option<usize>,
 }
 
+impl ListOptions {
+    /// Returns a predicate for the fields available on a raw `Vulnerability`
+    /// (severity, rule type, file path). Status filtering requires resolved audit data
+    /// and is not included; apply it separately after loading entries.
+    pub fn status_predicate(&self) -> impl Fn(&VulnerabilityEntry<'_>) -> bool + '_ {
+        move |e| self.status.matches(&e.status)
+    }
+
+    pub fn vuln_predicate(&self) -> impl FnMut(&Vulnerability) -> bool + '_ {
+        let rule_lc = self.rule.as_deref().map(str::to_lowercase);
+        let file_lc = self.file.as_deref().map(str::to_lowercase);
+        move |v: &Vulnerability| {
+            if let Some(expr) = self.severity.as_ref()
+                && !expr.matches(v.instance.instance_severity.unwrap_or(0.0))
+            {
+                return false;
+            }
+            if let Some(pat) = &rule_lc {
+                let kind = v.rule.kind.as_deref().unwrap_or("");
+                let typ = v.rule.typ.as_deref().unwrap_or("");
+                let subtyp = v.rule.subtyp.as_deref().unwrap_or("");
+                if !format!("{kind} {typ} {subtyp}")
+                    .to_lowercase()
+                    .contains(pat.as_str())
+                {
+                    return false;
+                }
+            }
+            if let Some(pat) = &file_lc
+                && let Some(floc) = primary_location(&v.analysis)
+                && !floc.path.to_lowercase().contains(pat.as_str())
+            {
+                false
+            } else {
+                true
+            }
+        }
+    }
+}
+
 pub struct ListRow<'a> {
     pub sev: f32,
     pub rule_type: &'a str,
@@ -162,48 +210,21 @@ pub struct ListRow<'a> {
     pub entry: &'a VulnerabilityEntry<'a>,
 }
 
-pub fn apply<'a>(entries: &'a [VulnerabilityEntry<'_>], opts: &ListOptions) -> Vec<ListRow<'a>> {
-    let rule_lc = opts.rule.as_deref().map(str::to_lowercase);
-    let file_lc = opts.file.as_deref().map(str::to_lowercase);
-
+pub fn sort_and_page<'a>(
+    entries: &'a [VulnerabilityEntry<'_>],
+    sort: Option<SortField>,
+    limit: Option<usize>,
+    offset: Option<usize>,
+) -> Vec<ListRow<'a>> {
     let mut rows: Vec<ListRow> = entries
         .iter()
-        .filter_map(|entry| {
-            if !opts.status.matches(&entry.status) {
-                return None;
-            }
-
-            let sev = entry
-                .vulnerability
-                .instance
-                .instance_severity
-                .unwrap_or(0.0);
-            if let Some(expr) = opts.severity.as_ref()
-                && !expr.matches(sev)
-            {
-                return None;
-            }
-
+        .map(|entry| {
+            let sev = entry.vulnerability.instance.instance_severity.unwrap_or(0.0);
             let kind = entry.vulnerability.rule.kind.as_deref().unwrap_or("");
             let rule_type = entry.vulnerability.rule.typ.as_deref().unwrap_or("");
             let rule_subtype = entry.vulnerability.rule.subtyp.as_deref().unwrap_or("");
-
-            if let Some(pat) = &rule_lc {
-                let haystack = format!("{} {} {}", kind, rule_type, rule_subtype).to_lowercase();
-                if !haystack.contains(pat.as_str()) {
-                    return None;
-                }
-            }
-
             let file_loc = primary_location(&entry.vulnerability.analysis);
-
-            if let (Some(pat), Some(floc)) = (&file_lc, &file_loc)
-                && !floc.path.to_lowercase().contains(pat.as_str())
-            {
-                return None;
-            }
-
-            Some(ListRow {
+            ListRow {
                 sev,
                 rule_type,
                 rule_subtype,
@@ -211,30 +232,26 @@ pub fn apply<'a>(entries: &'a [VulnerabilityEntry<'_>], opts: &ListOptions) -> V
                 file_loc,
                 status_label: entry.status.as_str(),
                 entry,
-            })
+            }
         })
         .collect();
 
-    match opts.sort {
+    match sort {
         None | Some(SortField::Severity) => {
-            rows.sort_by(|a, b| {
-                b.sev
-                    .partial_cmp(&a.sev)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+            rows.sort_by(|a, b| b.sev.partial_cmp(&a.sev).unwrap_or(std::cmp::Ordering::Equal));
         }
         Some(SortField::Rule) => {
-            rows.sort_by(|a, b| (a.rule_type, a.rule_subtype).cmp(&(b.rule_type, b.rule_subtype)))
+            rows.sort_by(|a, b| (a.rule_type, a.rule_subtype).cmp(&(b.rule_type, b.rule_subtype)));
         }
         Some(SortField::File) => rows.sort_by(|a, b| a.file_loc.cmp(&b.file_loc)),
         Some(SortField::Status) => rows.sort_by(|a, b| a.status_label.cmp(b.status_label)),
     }
 
     // offset and truncate after sort so --limit/--offset always operate on the chosen sort field
-    if let Some(off) = opts.offset {
+    if let Some(off) = offset {
         rows = rows.split_off(off.min(rows.len()));
     }
-    if let Some(n) = opts.limit {
+    if let Some(n) = limit {
         rows.truncate(n);
     }
 

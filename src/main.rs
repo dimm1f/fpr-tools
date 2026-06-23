@@ -1,3 +1,5 @@
+#[macro_use]
+mod xml_macros;
 mod audit_reader;
 mod filter_template_reader;
 mod fpr_report;

@@ -1,25 +1,10 @@
 use std::io::Read;
 
+use quick_xml::{Reader, events::Event};
 use serde::{Deserialize, Deserializer};
 use zip::read::ZipFile;
 
 use crate::section_index::SectionIndex;
-
-macro_rules! unwrap_vec {
-    ($fn_name:ident, $item_type:ty, $rename:literal) => {
-        fn $fn_name<'de, D>(deserializer: D) -> Result<Vec<$item_type>, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            #[derive(Deserialize)]
-            struct Wrapper {
-                #[serde(rename = $rename, default)]
-                items: Vec<$item_type>,
-            }
-            Ok(Wrapper::deserialize(deserializer)?.items)
-        }
-    };
-}
 
 macro_rules! unwrap_attr {
     ($fn_name:ident, $attr:literal, $result:ty) => {
@@ -117,6 +102,12 @@ pub struct SourceLocation {
     #[allow(dead_code)]
     #[serde(rename = "@snippet")]
     pub snippet: Option<String>,
+}
+
+impl SourceLocation {
+    pub fn path_line(&self) -> Option<(&str, i32)> {
+        self.path.as_deref().zip(self.line)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -878,28 +869,74 @@ impl Fvdl {
         Ok(quick_xml::de::from_reader(self.data.as_slice())?)
     }
 
-    pub fn vulnerabilities(&self) -> anyhow::Result<Vec<Vulnerability>> {
-        #[derive(Deserialize)]
-        struct W {
-            #[serde(rename = "Vulnerability", default)]
-            items: Vec<Vulnerability>,
-        }
+    pub fn vulnerabilities_filtered<F>(
+        &self,
+        mut predicate: F,
+    ) -> anyhow::Result<Vec<Vulnerability>>
+    where
+        F: FnMut(&Vulnerability) -> bool,
+    {
         let Some((s, e)) = self.index.first("Vulnerabilities") else {
             return Ok(vec![]);
         };
-        Ok(quick_xml::de::from_reader::<_, W>(&self.data[s..e])?.items)
-    }
+        let slice = &self.data[s..e];
+        let mut reader = Reader::from_reader(slice);
+        let mut buf = Vec::new();
+        let mut result = Vec::new();
+        let mut depth: usize = 0;
+        let mut vuln_start: Option<usize> = None;
 
-    // `Description` appears once per rule at the top level; each is deserialized individually.
-    pub fn descriptions(&self) -> anyhow::Result<Vec<Description>> {
-        let ranges = self.index.all("Description");
-        let mut result = Vec::with_capacity(ranges.len());
-        for &(s, e) in ranges {
-            result.push(quick_xml::de::from_reader::<_, Description>(
-                &self.data[s..e],
-            )?);
+        loop {
+            let pre = reader.buffer_position() as usize;
+            match reader.read_event_into(&mut buf)? {
+                Event::Start(ref tag) => {
+                    if depth == 1 && tag.name().as_ref() == b"Vulnerability" {
+                        vuln_start = Some(pre);
+                    }
+                    depth += 1;
+                }
+                Event::End(_) => {
+                    depth -= 1;
+                    if depth == 1
+                        && let Some(start) = vuln_start.take()
+                    {
+                        let post = reader.buffer_position() as usize;
+                        let vuln =
+                            quick_xml::de::from_reader::<_, Vulnerability>(&slice[start..post])?;
+                        if predicate(&vuln) {
+                            result.push(vuln);
+                        }
+                    }
+                }
+                Event::Empty(ref tag) if depth == 1 && tag.name().as_ref() == b"Vulnerability" => {
+                    let post = reader.buffer_position() as usize;
+                    let vuln = quick_xml::de::from_reader::<_, Vulnerability>(&slice[pre..post])?;
+                    if predicate(&vuln) {
+                        result.push(vuln);
+                    }
+                }
+                Event::Eof => break,
+                _ => {}
+            }
+            buf.clear();
         }
         Ok(result)
+    }
+
+    pub fn vulnerabilities(&self) -> anyhow::Result<Vec<Vulnerability>> {
+        self.vulnerabilities_filtered(|_| true)
+    }
+
+    fn deserialize_all<T: for<'de> Deserialize<'de>>(&self, tag: &str) -> anyhow::Result<Vec<T>> {
+        self.index
+            .all(tag)
+            .iter()
+            .map(|&(s, e)| Ok(quick_xml::de::from_reader(&self.data[s..e])?))
+            .collect()
+    }
+
+    pub fn descriptions(&self) -> anyhow::Result<Vec<Description>> {
+        self.deserialize_all("Description")
     }
 
     pub fn unified_node_pool(&self) -> anyhow::Result<Vec<UnifiedPrimaryNode>> {

@@ -12,8 +12,9 @@ use super::{apply_render, collect_trace_nodes};
 
 pub fn text(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Result<()> {
     let report = FprReport::from_zip(fpr)?;
-    let entries = report.vulnerabilities()?;
-    let rows = list_filter::apply(&entries, &opts);
+    let mut entries = report.vulnerabilities_filtered(opts.vuln_predicate())?;
+    entries.retain(opts.status_predicate());
+    let rows = list_filter::sort_and_page(&entries, opts.sort, opts.limit, opts.offset);
 
     if rows.is_empty() {
         println!("No vulnerabilities match the given filters.");
@@ -49,8 +50,9 @@ pub fn text(fpr: &mut ZipArchive<File>, opts: ListOptions) -> anyhow::Result<()>
 
 pub fn json(fpr: &mut ZipArchive<File>, opts: ListOptions, all_fields: bool) -> anyhow::Result<()> {
     let report = FprReport::from_zip(fpr)?;
-    let entries = report.vulnerabilities()?;
-    let rows = list_filter::apply(&entries, &opts);
+    let mut entries = report.vulnerabilities_filtered(opts.vuln_predicate())?;
+    entries.retain(opts.status_predicate());
+    let rows = list_filter::sort_and_page(&entries, opts.sort, opts.limit, opts.offset);
 
     if all_fields {
         let src_archive = Some(SrcArchive::from_zip(fpr)?);

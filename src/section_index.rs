@@ -8,6 +8,12 @@ pub(crate) struct SectionIndex {
 
 impl SectionIndex {
     pub(crate) fn build(data: &[u8]) -> anyhow::Result<Self> {
+        fn tag_name(tag: &quick_xml::events::BytesStart<'_>) -> String {
+            std::str::from_utf8(tag.name().as_ref())
+                .unwrap_or("")
+                .to_owned()
+        }
+
         let mut reader = Reader::from_reader(data);
         let mut sections: HashMap<String, Vec<(usize, usize)>> = HashMap::new();
         let mut buf = Vec::new();
@@ -17,12 +23,9 @@ impl SectionIndex {
         loop {
             let pre = reader.buffer_position() as usize;
             match reader.read_event_into(&mut buf)? {
-                Event::Start(tag) => {
+                Event::Start(ref tag) => {
                     if depth == 1 {
-                        let name = std::str::from_utf8(tag.name().as_ref())
-                            .unwrap_or("")
-                            .to_owned();
-                        current = Some((name, pre));
+                        current = Some((tag_name(tag), pre));
                     }
                     depth += 1;
                 }
@@ -35,13 +38,10 @@ impl SectionIndex {
                         }
                     }
                 }
-                Event::Empty(tag) => {
+                Event::Empty(ref tag) => {
                     if depth == 1 {
-                        let name = std::str::from_utf8(tag.name().as_ref())
-                            .unwrap_or("")
-                            .to_owned();
                         let post = reader.buffer_position() as usize;
-                        sections.entry(name).or_default().push((pre, post));
+                        sections.entry(tag_name(tag)).or_default().push((pre, post));
                     }
                 }
                 Event::Eof => break,

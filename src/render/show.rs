@@ -28,7 +28,9 @@ pub fn text(fpr: &mut ZipArchive<File>, ids: &[&str], opts: &ShowOptions) -> any
     };
     let descriptions = report.fvdl.descriptions()?;
     let node_pool = report.fvdl.unified_node_pool()?;
-    let entries = report.vulnerabilities()?;
+    let entries = report.vulnerabilities_filtered(|v| {
+        ids.iter().any(|id| v.instance.instance_id.starts_with(id))
+    })?;
 
     for (i, id) in ids.iter().enumerate() {
         if i > 0 {
