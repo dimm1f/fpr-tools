@@ -219,7 +219,11 @@ pub fn sort_and_page<'a>(
     let mut rows: Vec<ListRow> = entries
         .iter()
         .map(|entry| {
-            let sev = entry.vulnerability.instance.instance_severity.unwrap_or(0.0);
+            let sev = entry
+                .vulnerability
+                .instance
+                .instance_severity
+                .unwrap_or(0.0);
             let kind = entry.vulnerability.rule.kind.as_deref().unwrap_or("");
             let rule_type = entry.vulnerability.rule.typ.as_deref().unwrap_or("");
             let rule_subtype = entry.vulnerability.rule.subtyp.as_deref().unwrap_or("");
@@ -238,7 +242,11 @@ pub fn sort_and_page<'a>(
 
     match sort {
         None | Some(SortField::Severity) => {
-            rows.sort_by(|a, b| b.sev.partial_cmp(&a.sev).unwrap_or(std::cmp::Ordering::Equal));
+            rows.sort_by(|a, b| {
+                b.sev
+                    .partial_cmp(&a.sev)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
         }
         Some(SortField::Rule) => {
             rows.sort_by(|a, b| (a.rule_type, a.rule_subtype).cmp(&(b.rule_type, b.rule_subtype)));
